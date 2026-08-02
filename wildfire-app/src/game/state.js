@@ -8,10 +8,27 @@
 // hinting at it stay in sync.
 export const BIG_SHOP_INTERVAL = 5;
 
-export function createInitialState() {
+export const DIFFICULTY = {
+  EASY: 'easy',
+  NORMAL: 'normal',
+  HARD: 'hard',
+};
+
+// Tunes Main.js's fire-count and fire-spread-speed curves. `easyWaves` is
+// how long the flat opening stays flat; `fireGrowthRate` and `spreadDecay`
+// control how steeply things ramp up after that (see fireCountForWave /
+// spreadDelayForWave in Main.js).
+export const DIFFICULTY_SETTINGS = {
+  [DIFFICULTY.EASY]: { easyWaves: 8, fireGrowthRate: 1.1, spreadDecay: 0.95, spreadFloorMs: 420 },
+  [DIFFICULTY.NORMAL]: { easyWaves: 5, fireGrowthRate: 1.14, spreadDecay: 0.93, spreadFloorMs: 350 },
+  [DIFFICULTY.HARD]: { easyWaves: 2, fireGrowthRate: 1.18, spreadDecay: 0.9, spreadFloorMs: 300 },
+};
+
+export function createInitialState(difficulty = DIFFICULTY.NORMAL) {
   return {
     coins: 0,
     wave: 1,
+    difficulty,
     upgrades: createInitialUpgrades(),
   };
 }

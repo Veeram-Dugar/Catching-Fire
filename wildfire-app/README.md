@@ -13,27 +13,34 @@ spreading fires, earn coins, and draft upgrades between waves.
 ## Features
 
 - **Report a Fire** (`/report`) — tap a live map to anonymously drop a pin
-  with a severity level (smoke, small flame, large fire). Coordinates are
-  rounded to ~100m before storage so reports can't be traced to an exact
-  address. You can delete a report you submitted from your own browser
-  (click its pin); nobody else can delete it, since doing so requires a
-  one-time secret token only your browser ever receives, enforced by a
-  database function rather than a client-trusted check — see "Deleting
-  your own reports" below. Reports also auto-expire on a severity-based
-  timer regardless (smoke 4h, small flame 10h, large fire 24h); a spot
-  that keeps getting reported just stays visible longer. The page also
-  pulls live, official fire-weather alerts (Red Flag Warning, Fire
-  Weather Watch, etc.) from the National Weather Service for your area,
-  so community reports sit alongside real government data.
+  with a severity level (smoke, small flame, large fire). New reports from
+  anyone appear on everyone's map live via Supabase Realtime, sorted by
+  distance from you. Coordinates are rounded to ~100m before storage so
+  reports can't be traced to an exact address. You can delete a report you
+  submitted from your own browser (click its pin); nobody else can delete
+  it, since doing so requires a one-time secret token only your browser
+  ever receives, enforced by a database function rather than a
+  client-trusted check — see "Deleting your own reports" below. Anyone can
+  click "Still burning" on any pin to corroborate it without needing to
+  own it, refreshing how long it stays visible; reports otherwise
+  auto-expire on a severity-based timer (smoke 4h, small flame 10h, large
+  fire 24h). The page also pulls live, official fire-weather alerts (Red
+  Flag Warning, Fire Weather Watch, etc.) and current wind speed/direction
+  from the National Weather Service for your area, so community reports
+  sit alongside real government data.
 - **Play the Game** (`/game`) — fire spawns, escalates through three tiers
   (small → large → inferno, the last only after wave 12 and taking three
   hits to fully extinguish), and spreads across the grid on a timer that
-  ramps up exponentially after wave 5. Move with arrow keys/WASD, spray
-  with spacebar, chain kills for a coin combo multiplier, and watch for
-  rare golden coins. Clear a wave to draft one free upgrade from a
-  random set of three; every 5th wave clear opens a full paid Supply Drop
-  shop instead, where saved-up coins buy any of the 9 available upgrades
-  outright. Best wave reached persists across runs via `localStorage`.
+  ramps up exponentially after an easy opening stretch (tune this via the
+  easy/normal/hard difficulty select on the menu). Move with arrow
+  keys/WASD or the on-screen touch controls, spray with spacebar or the
+  touch spray button, chain kills for a coin combo multiplier, and watch
+  for rare golden coins — all with procedurally synthesized sound effects
+  (no audio files, same "everything is code" philosophy as the art).
+  Clear a wave to draft one free upgrade from a random set of three; every
+  5th wave clear opens a full paid Supply Drop shop instead, where
+  saved-up coins buy any of the 9 available upgrades outright. Best wave
+  reached persists across runs via `localStorage`.
 
 ## Tech stack
 
@@ -68,7 +75,12 @@ setup needed. To make the reporting map (`/report`) work too, keep reading.
 
 1. Create a free project at [supabase.com](https://supabase.com)
 2. In the SQL Editor, run `supabase/schema.sql` from this repo (creates the
-   `reports` table with row-level security)
+   `reports` table, row-level security, the `insert_report`/`delete_report`/
+   `confirm_report` functions, and enables Realtime for the table). If a
+   function you just created comes back as "not found in the schema cache"
+   even though the SQL ran with no errors, run `notify pgrst, 'reload
+   schema';` — PostgREST (Supabase's API layer) doesn't always pick up new
+   functions immediately.
 3. In your Supabase project's **Settings → API**, copy the **Project URL**
    and the **anon / publishable key**
 4. Paste them into `.env`:
@@ -131,26 +143,35 @@ Claude Code.
 **Built:**
 - Anonymous fire reporting with click-to-place pins, severity selection,
   geolocation centering, and privacy-rounded coordinates
+- Reports appear live for every visitor via Supabase Realtime (verified
+  the broadcast payload correctly excludes `delete_token` — the same
+  column-level restriction that protects REST reads also applies to
+  Realtime, not just one or the other)
 - Self-service deletion of your own reports via a secret token enforced
   by database functions (not a client-side check) — see "Deleting your
   own reports" above; nobody can delete anyone else's report
-- Reports auto-expire per severity, and reports at the same rounded
+- "Still burning" corroboration on any report, from anyone, without
+  needing to own it — a deliberately weaker check than delete, since
+  confirming isn't destructive (see `confirm_report` in `schema.sql`)
+- Reports sorted by distance from you, and reports at the same rounded
   location merge into one marker showing the highest severity and how
   many times it's been reported — see `fetchActiveReports()` in
   `src/lib/supabase.js`
-- Live NWS fire-weather alerts (free, keyless, no backend proxy needed —
-  see `src/lib/nws.js`) shown alongside community reports on the map
+- Live NWS fire-weather alerts and current wind speed/direction (free,
+  keyless, no backend proxy needed — see `src/lib/nws.js`) shown
+  alongside community reports on the map
 - Full roguelite game loop: three-tier fire escalation, spread/spray/coin
   mechanics, water resource management, a free upgrade draft every wave
   plus a paid full shop every 5th wave, 9 total upgrades, and persistent
   best-wave tracking — see `src/game/state.js` and `src/game/scenes/`
+- Easy/normal/hard difficulty select, on-screen touch controls (d-pad +
+  spray button, works alongside keyboard), and procedurally synthesized
+  sound effects (no audio asset files) — see `src/game/audio.js`
 
 **Stretch goals (not yet implemented):**
 - Seeding in-game fires from real, live Supabase reports instead of random
   placement — there's a hook point left for this in `src/game/scenes/Main.js`
   (`buildGrid()`), but it isn't wired up yet
-- Real-time report updates on the map (currently reloads only after your own
-  submission, no live subscription to other users' reports)
 - Rate limiting or spam prevention on report submission (auto-expiry limits
   how long spam stays visible, but doesn't stop someone from submitting a
   burst of fake reports in the first place)

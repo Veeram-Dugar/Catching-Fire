@@ -12,12 +12,15 @@ import {
   fetchActiveReports,
   submitReport,
   deleteReport,
+  confirmReport,
+  subscribeToReports,
   getMyReportToken,
   isMyReport,
+  distanceKm,
   SEVERITY,
   SEVERITY_COLOR,
 } from '../lib/supabase.js';
-import { fetchFireWeatherAlerts, ALERT_SEVERITY_COLOR } from '../lib/nws.js';
+import { fetchFireWeatherAlerts, fetchWindData, ALERT_SEVERITY_COLOR } from '../lib/nws.js';
 
 // Leaflet's default marker icons don't bundle correctly with Vite; build
 // colored circle markers manually instead of fighting the asset pipeline.
@@ -32,6 +35,11 @@ function coloredIcon(color) {
 
 const pendingIcon = coloredIcon('#38bdf8');
 const FALLBACK_CENTER = [37.7749, -122.4194]; // SF
+
+function formatDistance(km) {
+  if (km < 1) return `${Math.round(km * 1000)} m away`;
+  return `${km.toFixed(1)} km away`;
+}
 
 function ClickToPlacePin({ onPick }) {
   useMapEvents({
@@ -48,21 +56,22 @@ export default function ReportMap() {
   const [severity, setSeverity] = useState(SEVERITY.SMOKE);
   const [reports, setReports] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [wind, setWind] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | submitting | done | error
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    // Load alerts for the fallback center right away so something shows up
-    // fast, then upgrade to the real position once geolocation resolves
-    // (which can take a few seconds, or fail/be denied entirely).
-    loadAlerts(FALLBACK_CENTER[0], FALLBACK_CENTER[1]);
+    // Load alerts/wind for the fallback center right away so something
+    // shows up fast, then upgrade to the real position once geolocation
+    // resolves (which can take a few seconds, or fail/be denied entirely).
+    loadLiveData(FALLBACK_CENTER[0], FALLBACK_CENTER[1]);
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const next = [pos.coords.latitude, pos.coords.longitude];
           setCenter(next);
-          loadAlerts(next[0], next[1]);
+          loadLiveData(next[0], next[1]);
         },
         () => {
           /* keep fallback center if permission denied */
@@ -70,6 +79,10 @@ export default function ReportMap() {
       );
     }
     loadReports();
+
+    // New reports from anyone appear live, without a manual refresh.
+    const unsubscribe = subscribeToReports(() => loadReports());
+    return unsubscribe;
   }, []);
 
   function loadReports() {
@@ -78,10 +91,11 @@ export default function ReportMap() {
       .catch((err) => setErrorMsg(err.message));
   }
 
-  function loadAlerts(lat, lng) {
+  function loadLiveData(lat, lng) {
     // Supplementary official data — a fetch failure here shouldn't block
     // reporting, so this deliberately doesn't surface into errorMsg.
     fetchFireWeatherAlerts(lat, lng).then(setAlerts);
+    fetchWindData(lat, lng).then(setWind);
   }
 
   async function handleSubmit() {
@@ -112,18 +126,38 @@ export default function ReportMap() {
     }
   }
 
+  /** Corroborates a report is still active without needing to own it —
+   *  bumps its last-seen timestamp so it stays visible longer. */
+  async function handleConfirm(id) {
+    try {
+      await confirmReport(id);
+      loadReports();
+    } catch (err) {
+      setStatus('error');
+      setErrorMsg(err.message);
+    }
+  }
+
+  const sortedReports = [...reports].sort(
+    (a, b) =>
+      distanceKm(center[0], center[1], a.lat, a.lng) -
+      distanceKm(center[0], center[1], b.lat, b.lng)
+  );
+
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-4 px-6 py-8">
       <div>
         <h1 className="text-xl font-semibold text-orange-300">Report a Fire</h1>
         <p className="text-sm text-slate-400">
-          Tap the map where you see smoke or flames. Reports are anonymous and
-          locations are rounded for privacy. Pins fade out on their own a
-          few hours after the last report there. You can delete a report
-          you submitted from this browser (click its pin), but no one else
-          can — so a fire that's still burning just keeps getting reported
-          instead. Official fire-weather alerts from the National Weather
-          Service for your area, when active, show up below.
+          Tap the map where you see smoke or flames. Reports are anonymous,
+          appear live for everyone as they come in, and are sorted by
+          distance from you. Locations are rounded for privacy, and pins
+          fade out a few hours after the last report there — click a pin
+          and hit "Still burning" if it's not out yet, no ownership needed.
+          You can also delete a report you submitted from this browser, but
+          no one else can. Official fire-weather alerts and current wind
+          conditions from the National Weather Service for your area, when
+          available, show up below.
         </p>
       </div>
 
@@ -156,6 +190,27 @@ export default function ReportMap() {
         </div>
       )}
 
+      {wind && (
+        <div className="flex items-center gap-3 rounded border border-slate-700 bg-slate-900/60 p-3 text-xs text-slate-300">
+          {wind.directionDegrees !== null && (
+            <span
+              className="text-lg text-sky-300"
+              style={{
+                display: 'inline-block',
+                transform: `rotate(${wind.directionDegrees + 180}deg)`,
+              }}
+              title="Direction the wind is blowing toward"
+            >
+              ↑
+            </span>
+          )}
+          <span>
+            Wind: {wind.direction} at {wind.speed} · {wind.shortForecast} · a rough sense of
+            which way a fire nearby might drift
+          </span>
+        </div>
+      )}
+
       <div className="h-[420px] w-full overflow-hidden rounded-lg border border-slate-700">
         <MapContainer center={center} zoom={12} className="h-full w-full">
           <TileLayer
@@ -164,7 +219,7 @@ export default function ReportMap() {
           />
           <ClickToPlacePin onPick={setPin} />
 
-          {reports.map((r) => (
+          {sortedReports.map((r) => (
             <Marker
               key={r.id}
               position={[r.lat, r.lng]}
@@ -174,16 +229,27 @@ export default function ReportMap() {
                 <div>
                   {r.severity.replace('_', ' ')}
                   {r.count > 1 ? ` · reported ${r.count}x` : ''} · last seen{' '}
-                  {new Date(r.created_at).toLocaleString()}
+                  {new Date(r.last_confirmed_at).toLocaleString()}
                 </div>
-                {r.reportIds.some(isMyReport) && (
+                <div className="text-slate-500">
+                  {formatDistance(distanceKm(center[0], center[1], r.lat, r.lng))}
+                </div>
+                <div className="mt-2 flex gap-2">
                   <button
-                    onClick={() => handleDelete(r.reportIds)}
-                    className="mt-2 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-500"
+                    onClick={() => handleConfirm(r.id)}
+                    className="rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-500"
                   >
-                    Delete my report
+                    Still burning
                   </button>
-                )}
+                  {r.reportIds.some(isMyReport) && (
+                    <button
+                      onClick={() => handleDelete(r.reportIds)}
+                      className="rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-500"
+                    >
+                      Delete my report
+                    </button>
+                  )}
+                </div>
               </Popup>
             </Marker>
           ))}

@@ -9,11 +9,13 @@ create table if not exists reports (
   lng float8 not null,
   severity text not null check (severity in ('smoke', 'small_flame', 'large_fire')),
   created_at timestamptz default now(),
-  delete_token uuid not null default gen_random_uuid()
+  delete_token uuid not null default gen_random_uuid(),
+  last_confirmed_at timestamptz not null default now()
 );
 
--- For projects that already had the table before delete_token existed.
+-- For projects that already had the table before these columns existed.
 alter table reports add column if not exists delete_token uuid not null default gen_random_uuid();
+alter table reports add column if not exists last_confirmed_at timestamptz not null default now();
 
 alter table reports enable row level security;
 
@@ -23,7 +25,7 @@ alter table reports enable row level security;
 -- table insert/delete is revoked entirely; the only way in or out is
 -- through the two SECURITY DEFINER functions below, which control
 -- precisely what's possible and what's exposed.
-revoke insert, delete on reports from anon;
+revoke insert, update, delete on reports from anon;
 drop policy if exists "Anyone can insert reports" on reports;
 
 -- Anyone can still read reports directly -- but only the safe columns.
@@ -39,7 +41,7 @@ to anon
 using (true);
 
 revoke select on reports from anon;
-grant select (id, lat, lng, severity, created_at) on reports to anon;
+grant select (id, lat, lng, severity, created_at, last_confirmed_at) on reports to anon;
 
 -- Insert goes through this function (not a raw table insert) so it can
 -- return delete_token to the caller despite anon's column grant excluding
@@ -81,3 +83,41 @@ end;
 $$;
 
 grant execute on function delete_report(uuid, uuid) to anon;
+
+-- Anyone can "confirm" any report is still active, bumping last_confirmed_at
+-- without needing its delete_token. This deliberately has a much weaker
+-- check than delete_report -- confirmation is corroboration, not a
+-- destructive action, so it doesn't need per-report ownership. Worst case
+-- someone spam-confirms a stale or bogus report, which just keeps one
+-- low-severity marker visible a bit longer; that's not the "wipe out real
+-- fire reports" abuse this app's design is actually protecting against.
+create or replace function confirm_report(p_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  affected int;
+begin
+  update reports set last_confirmed_at = now() where id = p_id;
+  get diagnostics affected = row_count;
+  return affected > 0;
+end;
+$$;
+
+grant execute on function confirm_report(uuid) to anon;
+
+-- Broadcast INSERTs on this table over Supabase Realtime so new reports
+-- appear on everyone's map live, without a manual refresh. Wrapped in a
+-- existence check since ALTER PUBLICATION ... ADD TABLE has no built-in
+-- IF NOT EXISTS and errors if the table's already in the publication.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'reports'
+  ) then
+    alter publication supabase_realtime add table reports;
+  end if;
+end $$;

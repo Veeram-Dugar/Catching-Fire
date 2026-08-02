@@ -69,8 +69,19 @@ const MAX_EXPIRY_HOURS = Math.max(...Object.values(SEVERITY_EXPIRY_HOURS));
 
 function isExpired(report, now) {
   const hours = SEVERITY_EXPIRY_HOURS[report.severity] ?? SEVERITY_EXPIRY_HOURS[SEVERITY.SMOKE];
-  const ageMs = now - new Date(report.created_at).getTime();
+  const ageMs = now - new Date(report.last_confirmed_at).getTime();
   return ageMs > hours * 60 * 60 * 1000;
+}
+
+/** Great-circle distance between two points, in km (Haversine formula). */
+export function distanceKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 /**
@@ -110,19 +121,50 @@ export async function deleteReport(id, token) {
   return Boolean(data);
 }
 
+/**
+ * "Confirms" any report is still active — no delete_token needed, unlike
+ * deleteReport. This is corroboration, not a destructive action, so
+ * anyone can do it for anyone's report (see confirm_report in schema.sql
+ * for why that's an acceptable, much weaker check than delete).
+ */
+export async function confirmReport(id) {
+  assertConfigured();
+  const { data, error } = await supabase.rpc('confirm_report', { p_id: id });
+  if (error) throw error;
+  return Boolean(data);
+}
+
 /** Fetch raw reports from the last `windowHours`, most recent first. */
 export async function fetchRecentReports(limit = 200, windowHours = MAX_EXPIRY_HOURS + 2) {
   assertConfigured();
   const cutoff = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('reports')
-    .select('id, lat, lng, severity, created_at') // never delete_token — see above
-    .gte('created_at', cutoff)
-    .order('created_at', { ascending: false })
+    .select('id, lat, lng, severity, created_at, last_confirmed_at') // never delete_token
+    .gte('last_confirmed_at', cutoff)
+    .order('last_confirmed_at', { ascending: false })
     .limit(limit);
 
   if (error) throw error;
   return data;
+}
+
+/**
+ * Subscribes to new reports live via Supabase Realtime — new pins appear
+ * on everyone's map without a manual refresh. Returns an unsubscribe
+ * function; safe to call even when Supabase isn't configured (a no-op).
+ */
+export function subscribeToReports(onInsert) {
+  if (!isConfigured) return () => {};
+
+  const channel = supabase
+    .channel('reports-live')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reports' }, (payload) =>
+      onInsert(payload.new)
+    )
+    .subscribe();
+
+  return () => supabase.removeChannel(channel);
 }
 
 /**
@@ -150,15 +192,15 @@ export async function fetchActiveReports() {
         lng: report.lng,
         severity: report.severity,
         count: 1,
-        created_at: report.created_at,
+        last_confirmed_at: report.last_confirmed_at,
       });
       continue;
     }
 
     existing.count += 1;
     existing.reportIds.push(report.id);
-    if (new Date(report.created_at) > new Date(existing.created_at)) {
-      existing.created_at = report.created_at;
+    if (new Date(report.last_confirmed_at) > new Date(existing.last_confirmed_at)) {
+      existing.last_confirmed_at = report.last_confirmed_at;
     }
     if (SEVERITY_RANK[report.severity] > SEVERITY_RANK[existing.severity]) {
       existing.severity = report.severity;
@@ -166,7 +208,7 @@ export async function fetchActiveReports() {
   }
 
   return Array.from(clusters.values()).sort(
-    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    (a, b) => new Date(b.last_confirmed_at) - new Date(a.last_confirmed_at)
   );
 }
 

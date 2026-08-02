@@ -78,3 +78,55 @@ export const ALERT_SEVERITY_COLOR = {
   Minor: '#eab308',
   Unknown: '#64748b',
 };
+
+// 16-point compass -> degrees, for rotating a wind-direction arrow.
+// NWS's hourly forecast gives direction as one of these abbreviations.
+const COMPASS_DEGREES = {
+  N: 0,
+  NNE: 22.5,
+  NE: 45,
+  ENE: 67.5,
+  E: 90,
+  ESE: 112.5,
+  SE: 135,
+  SSE: 157.5,
+  S: 180,
+  SSW: 202.5,
+  SW: 225,
+  WSW: 247.5,
+  W: 270,
+  WNW: 292.5,
+  NW: 315,
+  NNW: 337.5,
+};
+
+/**
+ * Fetches current wind speed/direction for a point, from the same NWS
+ * hourly forecast used for alerts — no separate signup, same free API.
+ * Returns null if outside NWS coverage or the request fails; wind context
+ * is a nice-to-have, not something that should block the rest of the page.
+ */
+export async function fetchWindData(lat, lng) {
+  try {
+    const pointRes = await fetch(`${NWS_BASE}/points/${lat},${lng}`);
+    if (!pointRes.ok) return null;
+    const point = await pointRes.json();
+    const hourlyUrl = point.properties?.forecastHourly;
+    if (!hourlyUrl) return null;
+
+    const hourlyRes = await fetch(hourlyUrl, { headers: { Accept: 'application/geo+json' } });
+    if (!hourlyRes.ok) return null;
+    const hourly = await hourlyRes.json();
+    const period = hourly.properties?.periods?.[0];
+    if (!period) return null;
+
+    return {
+      speed: period.windSpeed, // e.g. "15 mph"
+      direction: period.windDirection, // e.g. "N"
+      directionDegrees: COMPASS_DEGREES[period.windDirection] ?? null,
+      shortForecast: period.shortForecast,
+    };
+  } catch {
+    return null;
+  }
+}

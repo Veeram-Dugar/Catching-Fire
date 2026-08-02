@@ -14,7 +14,18 @@ import {
   createInitialUpgrades,
   recordBestWave,
   BIG_SHOP_INTERVAL,
+  DIFFICULTY,
+  DIFFICULTY_SETTINGS,
 } from '../state.js';
+import {
+  playSpray,
+  playCoin,
+  playCombo,
+  playGolden,
+  playWaveClear,
+  playGameOver,
+  playShield,
+} from '../audio.js';
 
 const TILE_STATE = {
   GRASS: 'grass',
@@ -45,25 +56,27 @@ const COMBO_MULTIPLIER_CAP = 3;
 const GOLDEN_COIN_CHANCE = 0.08;
 const GOLDEN_COIN_MULTIPLIER = 3;
 
-// The first EASY_WAVES stay nearly flat so new runs have room to breathe;
+// The first `easyWaves` stay nearly flat so new runs have room to breathe;
 // difficulty only starts compounding exponentially after that, capped so
 // it stays hard-but-survivable rather than spiraling into "impossible."
-const EASY_WAVES = 5;
-
-function fireCountForWave(wave) {
-  if (wave <= EASY_WAVES) {
-    return 2 + Math.floor((wave - 1) / 3); // wave1: 2 ... wave5: 3
+// `settings` is one of DIFFICULTY_SETTINGS's entries (see state.js),
+// chosen at the Menu and carried in this.state.difficulty.
+function fireCountForWave(wave, settings) {
+  const { easyWaves, fireGrowthRate } = settings;
+  if (wave <= easyWaves) {
+    return 2 + Math.floor((wave - 1) / 3); // wave1: 2 ... wave{easyWaves}: ~3
   }
-  const overflow = wave - EASY_WAVES;
-  return Math.min(3 + Math.round(Math.pow(1.14, overflow)), 30);
+  const overflow = wave - easyWaves;
+  return Math.min(3 + Math.round(Math.pow(fireGrowthRate, overflow)), 30);
 }
 
-function spreadDelayForWave(wave) {
-  if (wave <= EASY_WAVES) {
-    return 900 - (wave - 1) * 10; // wave1: 900ms ... wave5: 860ms
+function spreadDelayForWave(wave, settings) {
+  const { easyWaves, spreadDecay, spreadFloorMs } = settings;
+  if (wave <= easyWaves) {
+    return 900 - (wave - 1) * 10; // wave1: 900ms ... wave{easyWaves}: ~860ms
   }
-  const overflow = wave - EASY_WAVES;
-  return Math.max(860 * Math.pow(0.93, overflow), 350);
+  const overflow = wave - easyWaves;
+  return Math.max(860 * Math.pow(spreadDecay, overflow), spreadFloorMs);
 }
 
 export default class Main extends Phaser.Scene {
@@ -73,6 +86,7 @@ export default class Main extends Phaser.Scene {
 
   init() {
     this.state = this.game.registry.get('state');
+    this.difficultySettings = DIFFICULTY_SETTINGS[this.state.difficulty ?? DIFFICULTY.NORMAL];
     this.grid = []; // 2D array of TILE_STATE
     this.tileSprites = []; // 2D array of Phaser images mirroring `grid`
     this.water = BASE_MAX_WATER * waterCapacityMultiplier(this.state.upgrades.waterCapacity);
@@ -88,10 +102,11 @@ export default class Main extends Phaser.Scene {
     this.buildPlayer();
     this.buildHud();
     this.buildInput();
+    this.buildTouchControls();
 
     // Fire spreads on a timer, gets exponentially faster each wave.
     this.spreadTimer = this.time.addEvent({
-      delay: spreadDelayForWave(this.state.wave),
+      delay: spreadDelayForWave(this.state.wave, this.difficultySettings),
       loop: true,
       callback: () => this.spreadFire(),
     });
@@ -146,7 +161,7 @@ export default class Main extends Phaser.Scene {
     // Seed initial fires at random, growing exponentially with wave.
     // Stretch goal: seed from real Supabase reports instead of random
     // placement (not yet implemented — see README's "stretch goals").
-    const fireCount = fireCountForWave(this.state.wave);
+    const fireCount = fireCountForWave(this.state.wave, this.difficultySettings);
     let placed = 0;
     while (placed < fireCount) {
       const row = Phaser.Math.Between(0, GRID_ROWS - 1);
@@ -295,6 +310,7 @@ export default class Main extends Phaser.Scene {
     );
     toClear.forEach(([r, c]) => this.setTile(r, c, TILE_STATE.GRASS));
     this.dangerText.setVisible(false);
+    playShield();
 
     const msg = this.add
       .text(this.scale.width / 2, HUD_HEIGHT + 24, 'EMBER SHIELD ACTIVATED!', {
@@ -357,6 +373,68 @@ export default class Main extends Phaser.Scene {
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
   }
 
+  // On-screen d-pad + spray button so the game is playable on a phone, not
+  // just keyboard. Always shown (harmless on desktop, just ignore them) to
+  // avoid unreliable touch-device sniffing. Needs a second active pointer
+  // so holding a direction and tapping spray can happen at the same time.
+  buildTouchControls() {
+    this.input.addPointer(1);
+    this.touchInput = { left: false, right: false, up: false, down: false };
+
+    const dpadCx = 66;
+    const dpadCy = this.scale.height - 66;
+    const btnSize = 28;
+    const gap = 32;
+
+    const makeDirButton = (dx, dy, key) => {
+      const btn = this.add
+        .rectangle(dpadCx + dx, dpadCy + dy, btnSize, btnSize, 0x38bdf8, 0.32)
+        .setStrokeStyle(1, 0x7dd3fc, 0.6)
+        .setDepth(20)
+        .setInteractive({ useHandCursor: true });
+      const press = () => {
+        this.touchInput[key] = true;
+        btn.setFillStyle(0x38bdf8, 0.65);
+      };
+      const release = () => {
+        this.touchInput[key] = false;
+        btn.setFillStyle(0x38bdf8, 0.32);
+      };
+      btn.on('pointerdown', press);
+      btn.on('pointerup', release);
+      btn.on('pointerout', release);
+      return btn;
+    };
+
+    makeDirButton(0, -gap, 'up');
+    makeDirButton(0, gap, 'down');
+    makeDirButton(-gap, 0, 'left');
+    makeDirButton(gap, 0, 'right');
+
+    const sprayCx = this.scale.width - 60;
+    const sprayCy = this.scale.height - 60;
+    const sprayBtn = this.add
+      .circle(sprayCx, sprayCy, 32, 0xf97316, 0.32)
+      .setStrokeStyle(1, 0xfb923c, 0.6)
+      .setDepth(20)
+      .setInteractive({ useHandCursor: true });
+    this.add
+      .text(sprayCx, sprayCy, 'SPRAY', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#fff7ed',
+      })
+      .setOrigin(0.5)
+      .setDepth(21);
+    sprayBtn.on('pointerdown', () => {
+      sprayBtn.setFillStyle(0xf97316, 0.65);
+      this.spray();
+    });
+    const sprayRelease = () => sprayBtn.setFillStyle(0xf97316, 0.32);
+    sprayBtn.on('pointerup', sprayRelease);
+    sprayBtn.on('pointerout', sprayRelease);
+  }
+
   // ---------- HUD ----------
 
   buildHud() {
@@ -396,10 +474,10 @@ export default class Main extends Phaser.Scene {
     if (this.gameOver) return;
 
     const speed = BASE_MOVE_SPEED * moveSpeedMultiplier(this.state.upgrades.moveSpeed);
-    const left = this.cursors.left.isDown || this.wasd.A.isDown;
-    const right = this.cursors.right.isDown || this.wasd.D.isDown;
-    const up = this.cursors.up.isDown || this.wasd.W.isDown;
-    const down = this.cursors.down.isDown || this.wasd.S.isDown;
+    const left = this.cursors.left.isDown || this.wasd.A.isDown || this.touchInput.left;
+    const right = this.cursors.right.isDown || this.wasd.D.isDown || this.touchInput.right;
+    const up = this.cursors.up.isDown || this.wasd.W.isDown || this.touchInput.up;
+    const down = this.cursors.down.isDown || this.wasd.S.isDown || this.touchInput.down;
 
     let vx = 0;
     let vy = 0;
@@ -493,6 +571,7 @@ export default class Main extends Phaser.Scene {
 
     // Burst of water droplets from the nozzle.
     this.sprayParticles.explode(14, this.player.x, this.player.y);
+    playSpray();
   }
 
   spawnCoin(row, col) {
@@ -514,6 +593,14 @@ export default class Main extends Phaser.Scene {
     coin.setImmovable(true);
     coin.body.setAllowGravity(false);
     coin.value = value;
+
+    if (golden) {
+      playGolden();
+    } else if (this.comboCount >= 2) {
+      playCombo(this.comboCount);
+    } else {
+      playCoin();
+    }
 
     if (golden || this.comboCount >= 2) {
       this.showKillPopup(row, col, golden ? 'GOLDEN!' : `x${this.comboCount} COMBO`, golden);
@@ -561,12 +648,14 @@ export default class Main extends Phaser.Scene {
     this.player.setVelocity(0, 0);
 
     if (won) {
+      playWaveClear();
       // A full paid shop appears every Nth wave; otherwise a free draft.
       // Neither scene increments `state.wave` until "next wave" is
       // clicked, so the "WAVE X CLEARED" title shows the wave just won.
       const nextScene = this.state.wave % BIG_SHOP_INTERVAL === 0 ? 'BigShop' : 'Shop';
       this.time.delayedCall(400, () => this.scene.start(nextScene));
     } else {
+      playGameOver();
       recordBestWave(this.state.wave);
 
       const { width, height } = this.scale;
