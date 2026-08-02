@@ -14,6 +14,7 @@ import {
   SEVERITY,
   SEVERITY_COLOR,
 } from '../lib/supabase.js';
+import { fetchFireWeatherAlerts, ALERT_SEVERITY_COLOR } from '../lib/nws.js';
 
 // Leaflet's default marker icons don't bundle correctly with Vite; build
 // colored circle markers manually instead of fighting the asset pipeline.
@@ -27,6 +28,7 @@ function coloredIcon(color) {
 }
 
 const pendingIcon = coloredIcon('#38bdf8');
+const FALLBACK_CENTER = [37.7749, -122.4194]; // SF
 
 function ClickToPlacePin({ onPick }) {
   useMapEvents({
@@ -38,17 +40,27 @@ function ClickToPlacePin({ onPick }) {
 }
 
 export default function ReportMap() {
-  const [center, setCenter] = useState([37.7749, -122.4194]); // fallback: SF
+  const [center, setCenter] = useState(FALLBACK_CENTER);
   const [pin, setPin] = useState(null);
   const [severity, setSeverity] = useState(SEVERITY.SMOKE);
   const [reports, setReports] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const [status, setStatus] = useState('idle'); // idle | submitting | done | error
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
+    // Load alerts for the fallback center right away so something shows up
+    // fast, then upgrade to the real position once geolocation resolves
+    // (which can take a few seconds, or fail/be denied entirely).
+    loadAlerts(FALLBACK_CENTER[0], FALLBACK_CENTER[1]);
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => setCenter([pos.coords.latitude, pos.coords.longitude]),
+        (pos) => {
+          const next = [pos.coords.latitude, pos.coords.longitude];
+          setCenter(next);
+          loadAlerts(next[0], next[1]);
+        },
         () => {
           /* keep fallback center if permission denied */
         }
@@ -61,6 +73,12 @@ export default function ReportMap() {
     fetchActiveReports()
       .then(setReports)
       .catch((err) => setErrorMsg(err.message));
+  }
+
+  function loadAlerts(lat, lng) {
+    // Supplementary official data — a fetch failure here shouldn't block
+    // reporting, so this deliberately doesn't surface into errorMsg.
+    fetchFireWeatherAlerts(lat, lng).then(setAlerts);
   }
 
   async function handleSubmit() {
@@ -86,7 +104,8 @@ export default function ReportMap() {
           locations are rounded for privacy. Pins fade out on their own a
           few hours after the last report there — no one can delete a
           report, so a fire that's still burning just keeps getting
-          reported instead.
+          reported instead. Official fire-weather alerts from the National
+          Weather Service for your area, when active, show up below.
         </p>
       </div>
 
@@ -94,6 +113,30 @@ export default function ReportMap() {
         ⚠️ Not an emergency service. For an active, immediate threat, call 911 or
         your local emergency number first.
       </div>
+
+      {alerts.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {alerts.map((a) => {
+            const color = ALERT_SEVERITY_COLOR[a.severity] ?? ALERT_SEVERITY_COLOR.Unknown;
+            return (
+              <div
+                key={a.id}
+                className="rounded border p-3 text-xs"
+                style={{ borderColor: color, backgroundColor: `${color}22` }}
+              >
+                <div className="font-semibold text-slate-100">
+                  🔥 {a.event} — {a.areaDesc}
+                </div>
+                <p className="mt-1 text-slate-300">{a.headline}</p>
+                <p className="mt-1 text-slate-500">
+                  Official alert from the National Weather Service · expires{' '}
+                  {new Date(a.expires).toLocaleString()}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="h-[420px] w-full overflow-hidden rounded-lg border border-slate-700">
         <MapContainer center={center} zoom={12} className="h-full w-full">

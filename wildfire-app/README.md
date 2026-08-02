@@ -10,7 +10,11 @@ spreading fires, earn coins, and upgrade your gear between waves.
   to ~100m before storage so reports can't be traced to an exact address.
   Reports have no owner and no delete/edit capability (nothing for a bad
   actor to abuse), so they instead auto-expire on a severity-based timer —
-  a spot that keeps getting reported just stays visible longer.
+  a spot that keeps getting reported just stays visible longer. The page
+  also pulls live, official fire-weather alerts (Red Flag Warning, Fire
+  Weather Watch, etc.) from the National Weather Service for your area,
+  so community reports sit alongside real government data, not just
+  unverified pins.
 - **Play the Game** — a Phaser-powered grid where fire spawns, escalates,
   and spreads to neighboring tiles on a timer. Move with arrow keys/WASD,
   spray with spacebar to knock down fires and collect coins, then spend
@@ -30,6 +34,7 @@ spreading fires, earn coins, and upgrade your gear between waves.
 | Game engine | Phaser 3, mounted into a React wrapper component |
 | Map | Leaflet + react-leaflet |
 | Backend | Supabase (Postgres + REST) for anonymous report storage |
+| Live data | National Weather Service API (api.weather.gov) for fire-weather alerts |
 | Hosting | Vercel |
 
 ## Running it locally
@@ -84,6 +89,8 @@ Claude Code.
   24h) and reports at the same rounded location merge into one marker
   showing the highest severity and how many times it's been reported —
   see `fetchActiveReports()` in `src/lib/supabase.js`
+- Live NWS fire-weather alerts (free, keyless, no backend proxy needed —
+  see `src/lib/nws.js`) shown alongside community reports on the map
 - Full game loop: fire spawning + spreading + escalation, spray/extinguish,
   coin collection, water resource with regen and refill tiles, win/lose states,
   and wave progression with a shop between waves
