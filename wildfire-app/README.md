@@ -5,7 +5,7 @@ anonymous community reporting map — enriched with live official fire-weather
 alerts — paired with a retro 2D top-down roguelite where you race to put out
 spreading fires, earn coins, and draft upgrades between waves.
 
-**🔗 Live demo:** https://wildfire-app-git-feature-shop-polish-veeram-dugars-projects.vercel.app
+**🔗 Live demo:** https://wildfire-app-veeram-dugars-projects.vercel.app
 
 > ⚠️ This is a community awareness tool, not an emergency service. For an
 > active, immediate wildfire threat, call 911 or your local emergency number.
