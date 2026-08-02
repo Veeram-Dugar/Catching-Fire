@@ -15,7 +15,7 @@ export default function Home() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-6 py-16 text-center">
       <h1 className="font-retro text-2xl leading-relaxed text-orange-400 sm:text-3xl">
-        WildfireWatch
+        Catching Fire
       </h1>
       <p className="max-w-xl text-slate-300">
         A community reporting map for spotting wildfires near you, paired with a

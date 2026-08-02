@@ -2,14 +2,23 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const isConfigured = Boolean(supabaseUrl && supabaseKey);
 
-if (!supabaseUrl || !supabaseKey) {
+if (!isConfigured) {
   console.warn(
     'Supabase env vars are missing. Copy .env.example to .env and fill in your project URL and anon key.'
   );
 }
 
 export const supabase = createClient(supabaseUrl ?? '', supabaseKey ?? '');
+
+function assertConfigured() {
+  if (!isConfigured) {
+    throw new Error(
+      'Supabase is not configured — copy .env.example to .env and fill in your project URL and anon key.'
+    );
+  }
+}
 
 // Severity levels used across the app
 export const SEVERITY = {
@@ -31,6 +40,7 @@ export function roundForAnonymity(coord) {
 
 /** Insert a new anonymous wildfire report. */
 export async function submitReport({ lat, lng, severity }) {
+  assertConfigured();
   const { data, error } = await supabase
     .from('reports')
     .insert([
@@ -48,6 +58,7 @@ export async function submitReport({ lat, lng, severity }) {
 
 /** Fetch recent reports, most recent first. */
 export async function fetchRecentReports(limit = 100) {
+  assertConfigured();
   const { data, error } = await supabase
     .from('reports')
     .select('*')

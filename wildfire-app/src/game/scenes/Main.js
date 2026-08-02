@@ -4,6 +4,12 @@ import {
   waterCapacityMultiplier,
   moveSpeedMultiplier,
   hoseRangeRadius,
+  sprayCostMultiplier,
+  coinMagnetRadius,
+  coinValue,
+  emberShieldCharges,
+  createInitialUpgrades,
+  recordBestWave,
 } from '../state.js';
 
 const TILE_STATE = {
@@ -16,7 +22,8 @@ const TILE_STATE = {
 const HUD_HEIGHT = 64;
 const BASE_MAX_WATER = 120;
 const BASE_MOVE_SPEED = 160;
-const LOSE_COVERAGE_RATIO = 0.6; // lose if fire covers this fraction of grass tiles
+const BASE_SPRAY_COST = 15;
+const LOSE_COVERAGE_RATIO = 0.72; // lose if fire covers this fraction of grass tiles
 
 export default class Main extends Phaser.Scene {
   constructor() {
@@ -29,6 +36,8 @@ export default class Main extends Phaser.Scene {
     this.tileSprites = []; // 2D array of Phaser images mirroring `grid`
     this.water = BASE_MAX_WATER * waterCapacityMultiplier(this.state.upgrades.waterCapacity);
     this.gameOver = false;
+    // Ember Shield charges refill at the start of every wave.
+    this.shieldCharges = emberShieldCharges(this.state.upgrades.emberShield);
   }
 
   create() {
@@ -38,7 +47,7 @@ export default class Main extends Phaser.Scene {
     this.buildInput();
 
     // Fire spreads on a timer, gets a bit faster each wave.
-    const spreadDelay = Math.max(900 - this.state.wave * 60, 350);
+    const spreadDelay = Math.max(950 - this.state.wave * 45, 400);
     this.spreadTimer = this.time.addEvent({
       delay: spreadDelay,
       loop: true,
@@ -46,11 +55,16 @@ export default class Main extends Phaser.Scene {
     });
 
     this.coinsGroup = this.physics.add.group();
-    this.physics.add.overlap(this.player, this.coinsGroup, (_player, coin) => {
-      this.state.coins += 10;
-      coin.destroy();
-      this.updateHud();
+
+    this.sprayParticles = this.add.particles(0, 0, 'water-drop', {
+      lifespan: 260,
+      speed: { min: 80, max: 220 },
+      scale: { start: 1, end: 0.2 },
+      alpha: { start: 1, end: 0 },
+      gravityY: 220,
+      emitting: false,
     });
+    this.sprayParticles.setDepth(5);
   }
 
   // ---------- Grid setup ----------
@@ -74,10 +88,10 @@ export default class Main extends Phaser.Scene {
     this.setTile(2, 2, TILE_STATE.REFILL);
     this.setTile(GRID_ROWS - 3, GRID_COLS - 3, TILE_STATE.REFILL);
 
-    // Seed initial fires. More fires each wave.
-    // (This is also the hook point for seeding fires from real Supabase
-    // reports — see fetchAndSeedFromReports() below.)
-    const fireCount = Math.min(3 + this.state.wave, 12);
+    // Seed initial fires at random. More fires each wave. Stretch goal:
+    // seed from real Supabase reports instead of random placement (not
+    // yet implemented — see README's "stretch goals" section).
+    const fireCount = Math.min(2 + this.state.wave, 12);
     let placed = 0;
     while (placed < fireCount) {
       const row = Phaser.Math.Between(0, GRID_ROWS - 1);
@@ -111,18 +125,22 @@ export default class Main extends Phaser.Scene {
   spreadFire() {
     if (this.gameOver) return;
 
-    const ignitions = [];
-    const escalations = [];
+    // Escalate first so a tile that grows into a large fire this tick
+    // already spreads at the large-fire rate below, not the small one.
+    for (let row = 0; row < GRID_ROWS; row++) {
+      for (let col = 0; col < GRID_COLS; col++) {
+        if (this.grid[row][col] === TILE_STATE.FIRE_SMALL && Math.random() < 0.2) {
+          this.setTile(row, col, TILE_STATE.FIRE_LARGE);
+        }
+      }
+    }
 
+    const ignitions = [];
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const tile = this.grid[row][col];
-        if (tile === TILE_STATE.FIRE_SMALL) {
-          // Chance to escalate to a large fire.
-          if (Math.random() < 0.25) escalations.push([row, col]);
-        }
         if (tile === TILE_STATE.FIRE_SMALL || tile === TILE_STATE.FIRE_LARGE) {
-          const spreadChance = tile === TILE_STATE.FIRE_LARGE ? 0.35 : 0.18;
+          const spreadChance = tile === TILE_STATE.FIRE_LARGE ? 0.3 : 0.14;
           const neighbors = [
             [row - 1, col],
             [row + 1, col],
@@ -139,7 +157,6 @@ export default class Main extends Phaser.Scene {
       }
     }
 
-    escalations.forEach(([r, c]) => this.setTile(r, c, TILE_STATE.FIRE_LARGE));
     ignitions.forEach(([r, c]) => {
       if (this.grid[r][c] === TILE_STATE.GRASS) {
         this.setTile(r, c, TILE_STATE.FIRE_SMALL);
@@ -150,21 +167,54 @@ export default class Main extends Phaser.Scene {
   }
 
   checkLoseCondition() {
-    let fireCount = 0;
-    let totalTiles = GRID_ROWS * GRID_COLS;
+    const fireTiles = [];
+    const totalTiles = GRID_ROWS * GRID_COLS;
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         if (
           this.grid[row][col] === TILE_STATE.FIRE_SMALL ||
           this.grid[row][col] === TILE_STATE.FIRE_LARGE
         ) {
-          fireCount++;
+          fireTiles.push([row, col]);
         }
       }
     }
-    if (fireCount / totalTiles >= LOSE_COVERAGE_RATIO) {
-      this.endGame(false);
+
+    if (fireTiles.length / totalTiles < LOSE_COVERAGE_RATIO) return;
+
+    if (this.shieldCharges > 0) {
+      this.shieldCharges -= 1;
+      this.triggerEmberShield(fireTiles);
+      return;
     }
+
+    this.endGame(false);
+  }
+
+  triggerEmberShield(fireTiles) {
+    // Knock out roughly half of the current fire to buy breathing room —
+    // a save, not a full clear, so the wave still needs finishing.
+    const toClear = Phaser.Utils.Array.Shuffle(fireTiles.slice()).slice(
+      0,
+      Math.ceil(fireTiles.length / 2)
+    );
+    toClear.forEach(([r, c]) => this.setTile(r, c, TILE_STATE.GRASS));
+
+    const msg = this.add
+      .text(this.scale.width / 2, HUD_HEIGHT + 24, 'EMBER SHIELD ACTIVATED!', {
+        fontFamily: 'monospace',
+        fontSize: '15px',
+        color: '#7dd3fc',
+      })
+      .setOrigin(0.5)
+      .setDepth(10);
+    this.tweens.add({
+      targets: msg,
+      y: msg.y - 20,
+      alpha: 0,
+      duration: 1200,
+      onComplete: () => msg.destroy(),
+    });
   }
 
   // ---------- Player ----------
@@ -202,10 +252,11 @@ export default class Main extends Phaser.Scene {
   updateHud() {
     const { coins, wave, upgrades } = this.state;
     const maxWater = BASE_MAX_WATER * waterCapacityMultiplier(upgrades.waterCapacity);
+    const shieldText = upgrades.emberShield > 0 ? `   Shield: ${this.shieldCharges}` : '';
     this.hudText.setText(
       `Wave ${wave}   Coins: ${coins}   Water: ${Math.round(this.water)}/${Math.round(
         maxWater
-      )}   [Space] spray`
+      )}${shieldText}   [Space] spray`
     );
   }
 
@@ -227,6 +278,7 @@ export default class Main extends Phaser.Scene {
     if (up) vy -= speed;
     if (down) vy += speed;
     this.player.setVelocity(vx, vy);
+    if (vx !== 0) this.player.setFlipX(vx < 0);
 
     // Water regen (slow, unless standing on a refill tile).
     const maxWater = BASE_MAX_WATER * waterCapacityMultiplier(this.state.upgrades.waterCapacity);
@@ -238,8 +290,23 @@ export default class Main extends Phaser.Scene {
       this.spray();
     }
 
+    this.collectNearbyCoins();
     this.updateHud();
     this.checkWinCondition();
+  }
+
+  collectNearbyCoins() {
+    const radius = coinMagnetRadius(this.state.upgrades.coinMagnet);
+    this.coinsGroup
+      .getChildren()
+      .slice()
+      .forEach((coin) => {
+        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, coin.x, coin.y);
+        if (dist <= radius) {
+          this.state.coins += coin.value ?? 10;
+          coin.destroy();
+        }
+      });
   }
 
   currentPlayerTile() {
@@ -250,12 +317,14 @@ export default class Main extends Phaser.Scene {
   }
 
   spray() {
-    const cost = 15;
+    const cost = BASE_SPRAY_COST * sprayCostMultiplier(this.state.upgrades.sprayEfficiency);
     if (this.water < cost) return;
 
     const col = Math.floor(this.player.x / TILE_SIZE);
     const row = Math.floor((this.player.y - HUD_HEIGHT) / TILE_SIZE);
     const radius = hoseRangeRadius(this.state.upgrades.hoseRange);
+
+    this.playSprayEffect(radius);
 
     let hitSomething = false;
 
@@ -281,6 +350,26 @@ export default class Main extends Phaser.Scene {
     }
   }
 
+  playSprayEffect(radiusTiles) {
+    const reachPx = (radiusTiles + 0.5) * TILE_SIZE;
+
+    // Expanding ring shows how far the hose just reached.
+    const ring = this.add.circle(this.player.x, this.player.y, 4, 0x38bdf8, 0.3);
+    ring.setStrokeStyle(2, 0x7dd3fc, 0.8);
+    ring.setDepth(4);
+    this.tweens.add({
+      targets: ring,
+      radius: reachPx,
+      alpha: 0,
+      duration: 220,
+      ease: 'Cubic.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+
+    // Burst of water droplets from the nozzle.
+    this.sprayParticles.explode(14, this.player.x, this.player.y);
+  }
+
   spawnCoin(row, col) {
     const coin = this.coinsGroup.create(
       col * TILE_SIZE + TILE_SIZE / 2,
@@ -289,6 +378,7 @@ export default class Main extends Phaser.Scene {
     );
     coin.setImmovable(true);
     coin.body.setAllowGravity(false);
+    coin.value = coinValue(this.state.upgrades.coinMagnet);
   }
 
   // ---------- Win / lose ----------
@@ -317,20 +407,29 @@ export default class Main extends Phaser.Scene {
       this.state.wave += 1;
       this.time.delayedCall(400, () => this.scene.start('Shop'));
     } else {
+      recordBestWave(this.state.wave);
+
       const { width, height } = this.scale;
       this.add
         .rectangle(0, 0, width, height, 0x000000, 0.7)
         .setOrigin(0, 0);
       this.add
-        .text(width / 2, height / 2 - 20, 'FIRE OVERWHELMED THE AREA', {
+        .text(width / 2, height / 2 - 30, 'FIRE OVERWHELMED THE AREA', {
           fontFamily: 'monospace',
           fontSize: '16px',
           color: '#f87171',
           align: 'center',
         })
         .setOrigin(0.5);
+      this.add
+        .text(width / 2, height / 2, `You reached Wave ${this.state.wave}`, {
+          fontFamily: 'monospace',
+          fontSize: '13px',
+          color: '#94a3b8',
+        })
+        .setOrigin(0.5);
       const retry = this.add
-        .text(width / 2, height / 2 + 20, '[ RETRY FROM WAVE 1 ]', {
+        .text(width / 2, height / 2 + 30, '[ RETRY FROM WAVE 1 ]', {
           fontFamily: 'monospace',
           fontSize: '14px',
           color: '#4ade80',
@@ -340,7 +439,7 @@ export default class Main extends Phaser.Scene {
       retry.on('pointerdown', () => {
         this.state.coins = 0;
         this.state.wave = 1;
-        this.state.upgrades = { hoseRange: 1, waterCapacity: 1, moveSpeed: 1 };
+        this.state.upgrades = createInitialUpgrades();
         this.scene.start('Main');
       });
     }

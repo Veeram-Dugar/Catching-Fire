@@ -22,10 +22,10 @@ export default function GamePage() {
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col items-center gap-4 px-6 py-8">
-      <h1 className="text-xl font-semibold text-orange-300">Wildfire Simulator</h1>
+      <h1 className="text-xl font-semibold text-orange-300">Catching Fire: Wave Defense</h1>
       <p className="text-sm text-slate-400">
-        Move with arrow keys / WASD, spray with spacebar. Clear every fire to
-        reach the shop and upgrade your gear before the next wave.
+        Move with arrow keys / WASD, spray with spacebar. Clear every wave to
+        draft a free upgrade, then see how far you can push your run.
       </p>
       <div
         id={CONTAINER_ID}

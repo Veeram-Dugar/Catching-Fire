@@ -11,7 +11,7 @@ export default function Nav() {
 
   return (
     <nav className="flex items-center gap-6 border-b border-slate-800 bg-slate-950/80 px-6 py-4 backdrop-blur">
-      <span className="font-retro text-xs text-orange-400">🔥 WildfireWatch</span>
+      <span className="font-retro text-xs text-orange-400">🔥 Catching Fire</span>
       <div className="flex gap-4 text-sm">
         {links.map((link) => (
           <Link
