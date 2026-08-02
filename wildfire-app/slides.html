@@ -3,13 +3,11 @@
   :root {
     --night: #0b1020;
     --panel: #131b2e;
-    --panel-2: #1a2338;
     --line: #263049;
     --ember: #f97316;
     --blaze: #dc2626;
     --spark: #facc15;
     --water: #38bdf8;
-    --grass: #1e3a24;
     --ink: #eef2f8;
     --ash: #8b96ad;
     --ash-dim: #5b6684;
@@ -61,11 +59,13 @@
     inset: 0;
     display: flex;
     flex-direction: column;
-    padding: clamp(28px, 5vw, 72px) clamp(28px, 7vw, 96px);
+    padding: clamp(24px, 4vw, 56px) clamp(28px, 6vw, 88px);
+    /* Extra clearance so content can't render under the fixed nav bar. */
+    padding-bottom: clamp(88px, 10vw, 116px);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(14px);
-    transition: opacity 0.45s ease, transform 0.45s ease;
+    transform: translateY(10px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
     pointer-events: none;
   }
 
@@ -89,24 +89,24 @@
     flex-direction: column;
     justify-content: center;
     min-height: 0;
+    max-width: 900px;
   }
 
   .eyebrow {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--ember);
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: clamp(14px, 2.4vw, 22px);
+    gap: 9px;
+    margin-bottom: clamp(10px, 1.6vw, 16px);
   }
 
   .eyebrow::before {
     content: "";
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     background: var(--ember);
     display: inline-block;
     box-shadow: 0 0 8px var(--ember);
@@ -117,26 +117,24 @@
   h2 {
     font-family: var(--font-display);
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.005em;
     text-wrap: balance;
     margin: 0;
-    line-height: 1.04;
+    line-height: 1.12;
   }
 
   h2 {
-    font-size: clamp(30px, 4.4vw, 54px);
+    font-size: clamp(22px, 2.6vw, 32px);
     color: var(--ink);
-    max-width: 18ch;
+    max-width: 20ch;
   }
 
   p.lede {
-    font-family: var(--font-mono);
     color: var(--ash);
-    font-size: clamp(14px, 1.5vw, 17px);
-    line-height: 1.65;
+    font-size: clamp(13px, 1.2vw, 14.5px);
+    line-height: 1.6;
     max-width: 62ch;
-    margin: clamp(14px, 2vw, 22px) 0 0;
+    margin: clamp(12px, 1.6vw, 18px) 0 0;
   }
 
   /* ---------- tile-strip divider (real in-game hex values) ---------- */
@@ -144,12 +142,12 @@
   .tile-strip {
     display: flex;
     gap: 4px;
-    margin: clamp(18px, 3vw, 30px) 0;
+    margin: clamp(12px, 2vw, 18px) 0 0;
   }
 
   .tile-strip span {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     flex-shrink: 0;
   }
 
@@ -157,27 +155,27 @@
 
   .status-list {
     list-style: none;
-    margin: clamp(18px, 3vw, 28px) 0 0;
+    margin: clamp(16px, 2.4vw, 22px) 0 0;
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: clamp(12px, 1.8vw, 16px);
-    max-width: 68ch;
+    gap: clamp(10px, 1.4vw, 13px);
+    max-width: 62ch;
   }
 
   .status-list li {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    font-size: clamp(13.5px, 1.35vw, 15.5px);
-    line-height: 1.55;
+    gap: 11px;
+    font-size: clamp(13px, 1.15vw, 14.5px);
+    line-height: 1.5;
     color: var(--ink);
   }
 
   .status-list .dot {
-    width: 9px;
-    height: 9px;
-    margin-top: 6px;
+    width: 8px;
+    height: 8px;
+    margin-top: 5px;
     flex-shrink: 0;
     background: var(--dot, var(--ember));
   }
@@ -196,8 +194,8 @@
   .split {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: clamp(16px, 2.4vw, 28px);
-    margin-top: clamp(20px, 3vw, 32px);
+    gap: clamp(14px, 2vw, 22px);
+    margin-top: clamp(16px, 2.4vw, 24px);
   }
 
   @media (max-width: 820px) {
@@ -209,7 +207,7 @@
   .card {
     border: 1px solid var(--line);
     background: var(--panel);
-    padding: clamp(18px, 2.4vw, 26px);
+    padding: clamp(14px, 1.8vw, 20px);
   }
 
   .card.accent-ember {
@@ -221,15 +219,12 @@
   .card.accent-blaze {
     border-color: color-mix(in srgb, var(--blaze) 55%, var(--line));
   }
-  .card.accent-grass {
-    border-color: color-mix(in srgb, var(--spark) 55%, var(--line));
-  }
 
   .card .tag {
-    font-size: 11px;
-    letter-spacing: 0.18em;
+    font-size: 10px;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 
   .card.accent-ember .tag {
@@ -241,22 +236,19 @@
   .card.accent-blaze .tag {
     color: var(--blaze);
   }
-  .card.accent-grass .tag {
-    color: var(--spark);
-  }
 
   .card h3 {
     font-family: var(--font-display);
-    text-transform: uppercase;
-    font-size: clamp(19px, 2vw, 24px);
-    margin: 0 0 10px;
+    font-size: clamp(15px, 1.5vw, 18px);
+    margin: 0 0 8px;
     color: var(--ink);
+    line-height: 1.2;
   }
 
   .card p {
     color: var(--ash);
-    font-size: clamp(13px, 1.3vw, 14.5px);
-    line-height: 1.6;
+    font-size: clamp(12.5px, 1.1vw, 13.5px);
+    line-height: 1.55;
     margin: 0;
   }
 
@@ -270,17 +262,17 @@
   .term {
     border: 1px solid var(--line);
     background: var(--panel);
-    padding: clamp(16px, 2.4vw, 24px) clamp(18px, 2.6vw, 28px);
-    margin-top: clamp(18px, 3vw, 28px);
-    max-width: 72ch;
+    padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 22px);
+    margin-top: clamp(16px, 2.4vw, 22px);
+    max-width: 66ch;
   }
 
   .term-row {
     display: grid;
-    grid-template-columns: minmax(90px, 14ch) 1fr;
-    gap: 18px;
-    padding: 8px 0;
-    font-size: clamp(12.5px, 1.3vw, 14.5px);
+    grid-template-columns: minmax(80px, 12ch) 1fr;
+    gap: 16px;
+    padding: 7px 0;
+    font-size: clamp(12px, 1.05vw, 13.5px);
     border-bottom: 1px solid var(--line);
   }
 
@@ -290,7 +282,7 @@
 
   .term-row .k {
     color: var(--water);
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     font-size: 0.85em;
     padding-top: 2px;
@@ -312,11 +304,11 @@
     gap: 1px;
     background: var(--line);
     border: 1px solid var(--line);
-    margin-top: clamp(20px, 3vw, 30px);
-    max-width: 900px;
+    margin-top: clamp(16px, 2.4vw, 24px);
+    max-width: 780px;
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 700px) {
     .stat-grid {
       grid-template-columns: repeat(2, 1fr);
     }
@@ -324,20 +316,20 @@
 
   .stat {
     background: var(--panel);
-    padding: clamp(16px, 2.2vw, 24px) clamp(14px, 1.8vw, 20px);
+    padding: clamp(12px, 1.6vw, 18px) clamp(11px, 1.4vw, 16px);
   }
 
   .stat .n {
     font-family: var(--font-display);
-    font-size: clamp(28px, 3.4vw, 42px);
+    font-size: clamp(21px, 2.4vw, 30px);
     color: var(--spark);
     font-variant-numeric: tabular-nums;
     line-height: 1;
   }
 
   .stat .d {
-    margin-top: 8px;
-    font-size: clamp(11.5px, 1.15vw, 13px);
+    margin-top: 6px;
+    font-size: clamp(10.5px, 0.95vw, 11.5px);
     color: var(--ash);
     line-height: 1.4;
   }
@@ -346,15 +338,15 @@
 
   .hero-slide .slide-body {
     justify-content: center;
+    max-width: none;
   }
 
   .masthead {
     font-family: var(--font-display);
     font-weight: 700;
-    text-transform: uppercase;
-    font-size: clamp(52px, 10vw, 128px);
-    line-height: 0.92;
-    letter-spacing: 0.01em;
+    font-size: clamp(38px, 6.5vw, 76px);
+    line-height: 1;
+    letter-spacing: 0.005em;
     color: var(--ink);
     text-wrap: balance;
     position: relative;
@@ -369,11 +361,11 @@
   .hero-sub {
     position: relative;
     z-index: 2;
-    max-width: 52ch;
+    max-width: 50ch;
     color: var(--ash);
-    font-size: clamp(14px, 1.6vw, 18px);
+    font-size: clamp(13px, 1.3vw, 15.5px);
     line-height: 1.6;
-    margin-top: clamp(16px, 2.4vw, 24px);
+    margin-top: clamp(12px, 1.8vw, 18px);
   }
 
   .meta-row {
@@ -381,28 +373,28 @@
     z-index: 2;
     display: flex;
     flex-wrap: wrap;
-    gap: clamp(20px, 4vw, 48px);
-    margin-top: clamp(28px, 5vw, 56px);
-    font-size: 12px;
+    gap: clamp(18px, 3.5vw, 40px);
+    margin-top: clamp(22px, 4vw, 40px);
+    font-size: 11px;
   }
 
   .meta-row .label {
     color: var(--ash-dim);
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
   }
 
   .meta-row .value {
     color: var(--ink);
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .ember-canvas {
     position: absolute;
     inset: 0;
     z-index: 1;
-    opacity: 0.85;
+    opacity: 0.75;
   }
 
   /* ---------- team slide ---------- */
@@ -410,14 +402,14 @@
   .team-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: clamp(14px, 2vw, 22px);
-    margin-top: clamp(22px, 3.5vw, 34px);
-    max-width: 920px;
+    gap: clamp(12px, 1.8vw, 18px);
+    margin-top: clamp(18px, 3vw, 28px);
+    max-width: 800px;
     position: relative;
     z-index: 2;
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 700px) {
     .team-grid {
       grid-template-columns: 1fr;
     }
@@ -426,72 +418,80 @@
   .team-card {
     border: 1px solid var(--line);
     background: rgba(19, 27, 46, 0.75);
-    padding: 18px;
+    padding: 14px 16px;
   }
 
   .team-card .role {
-    font-size: 11px;
-    letter-spacing: 0.16em;
+    font-size: 10px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ember);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .team-card .name {
     font-family: var(--font-display);
-    font-size: 20px;
-    text-transform: uppercase;
+    font-size: 17px;
     color: var(--ink);
   }
 
   .team-card .focus {
-    margin-top: 6px;
-    font-size: 12.5px;
+    margin-top: 5px;
+    font-size: 11.5px;
     color: var(--ash);
-    line-height: 1.5;
+    line-height: 1.4;
   }
 
   /* ---------- chrome: presenter tag, counter, nav ---------- */
 
   .chrome-top {
+    position: relative;
+    z-index: 2;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    font-size: 11px;
+    font-size: 10.5px;
     color: var(--ash-dim);
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     flex-shrink: 0;
+    gap: 12px;
   }
 
   .chrome-top .presenter {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
   }
 
   .chrome-top .presenter .swatch {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
   }
 
   .chrome-bottom {
-    flex-shrink: 0;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding-top: clamp(16px, 2.4vw, 24px);
+    padding: clamp(14px, 2vw, 20px) clamp(28px, 6vw, 88px) clamp(18px, 2.6vw, 26px);
+    background: linear-gradient(to top, var(--night) 45%, transparent);
   }
 
   .dots {
     display: flex;
-    gap: 8px;
+    gap: 7px;
   }
 
   .dots button {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     border: none;
     background: var(--line);
@@ -509,24 +509,15 @@
     outline-offset: 3px;
   }
 
-  .nav-controls {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    font-size: 11px;
-    color: var(--ash-dim);
-    letter-spacing: 0.1em;
-  }
-
   .nav-btn {
     font-family: var(--font-mono);
     background: transparent;
     border: 1px solid var(--line);
     color: var(--ink);
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     cursor: pointer;
-    font-size: 15px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -546,6 +537,7 @@
   .counter {
     font-variant-numeric: tabular-nums;
     color: var(--ash);
+    font-size: 11px;
   }
 
   .counter b {
@@ -565,16 +557,6 @@
     padding: 8px 12px;
     z-index: 50;
   }
-
-  .help-hint {
-    position: fixed;
-    bottom: 10px;
-    right: 16px;
-    font-size: 10px;
-    color: var(--ash-dim);
-    letter-spacing: 0.08em;
-    z-index: 40;
-  }
 </style>
 
 <a class="skip-hint" href="#slide-content">Skip to current slide content</a>
@@ -585,13 +567,13 @@
     <canvas class="ember-canvas" id="emberCanvasTitle"></canvas>
     <div class="chrome-top">
       <span class="presenter"><span class="swatch" style="background: var(--ash-dim)"></span>OPENING</span>
-      <span>◉ SYSTEM ONLINE — REPORTS ACTIVE</span>
+      <span>◉ REPORTS ACTIVE</span>
     </div>
     <div class="slide-body" id="slide-content">
-      <h1 class="masthead">Catching<br /><em>Fire</em></h1>
+      <h1 class="masthead">Catching <em>Fire</em></h1>
       <p class="hero-sub">
-        A community wildfire-reporting map fused with official government data —
-        and a roguelite that makes checking it something you actually want to do.
+        A wildfire reporting map backed by real weather data — paired with a game
+        that gets people to actually check it.
       </p>
       <div class="meta-row">
         <div>
@@ -613,12 +595,12 @@
   <!-- 2: THE PROBLEM -->
   <section class="slide" data-index="1">
     <div class="chrome-top">
-      <span class="presenter"><span class="swatch" style="background: var(--ember)"></span>VEERAM — PRODUCT</span>
+      <span class="presenter"><span class="swatch" style="background: var(--ember)"></span>VEERAM</span>
       <span>WHY WE BUILT THIS</span>
     </div>
     <div class="slide-body">
       <div class="eyebrow">The problem</div>
-      <h2>Wildfire tools are either official or engaging. Rarely both.</h2>
+      <h2>Wildfire tools are either official or actually used. Rarely both.</h2>
       <div class="tile-strip" aria-hidden="true">
         <span style="background:#1e3a24"></span><span style="background:#234a2b"></span>
         <span style="background:#ea580c"></span><span style="background:#dc2626"></span>
@@ -627,226 +609,248 @@
       <ul class="status-list">
         <li>
           <span class="dot" style="--dot: var(--blaze)"></span>
-          <span><b>Official alerts lag reality.</b> <span class="desc">A Red Flag Warning covers a whole
-          forecast zone — not the specific hillside you can smell burning right now.</span></span>
+          <span><b>Official alerts are broad.</b> <span class="desc">A Red Flag Warning covers a
+          whole region — not your street.</span></span>
         </li>
         <li>
           <span class="dot" style="--dot: var(--ember)"></span>
-          <span><b>Community reporting apps get abandoned.</b> <span class="desc">Nothing brings people
-          back once the novelty of "report a hazard" wears off.</span></span>
+          <span><b>Reporting apps get abandoned.</b> <span class="desc">People stop opening
+          them once the novelty wears off.</span></span>
         </li>
         <li>
           <span class="dot" style="--dot: var(--water)"></span>
-          <span><b>Safety tools compete with everything else on your phone.</b> <span class="desc">If it's
-          not something you'd open voluntarily, it won't be open when it matters.</span></span>
+          <span><b>Nobody opens a safety app for fun.</b> <span class="desc">So it's not open
+          when it actually matters.</span></span>
         </li>
       </ul>
     </div>
   </section>
 
-  <!-- 3: THE IDEA -->
+  <!-- 3: OUR GOAL -->
   <section class="slide" data-index="2">
     <div class="chrome-top">
-      <span class="presenter"><span class="swatch" style="background: var(--ember)"></span>VEERAM — PRODUCT</span>
-      <span>THE PITCH</span>
+      <span class="presenter"><span class="swatch" style="background: var(--ember)"></span>VEERAM</span>
+      <span>OUR GOAL</span>
     </div>
     <div class="slide-body">
-      <div class="eyebrow">The idea</div>
-      <h2>Two products. One reason to keep coming back.</h2>
+      <div class="eyebrow">Our goal</div>
+      <h2>Close the gap between spotting smoke and someone knowing about it.</h2>
+      <ul class="status-list">
+        <li><span class="dot" style="--dot: var(--ember)"></span>
+          <span><b>Make it fast to report</b> <span class="desc">— so people do it right away,
+          not later.</span></span></li>
+        <li><span class="dot" style="--dot: var(--water)"></span>
+          <span><b>Make checking it a habit</b> <span class="desc">— before there's ever smoke
+          to report.</span></span></li>
+        <li><span class="dot" style="--dot: var(--spark)"></span>
+          <span><b>Remove the doubt</b> <span class="desc">— no one should hesitate because
+          they're not sure it's worth reporting.</span></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 4: THE APPROACH -->
+  <section class="slide" data-index="3">
+    <div class="chrome-top">
+      <span class="presenter"><span class="swatch" style="background: var(--ember)"></span>VEERAM</span>
+      <span>THE APPROACH</span>
+    </div>
+    <div class="slide-body">
+      <div class="eyebrow">The approach</div>
+      <h2>One map you check before an emergency, not just during one.</h2>
       <div class="split">
         <div class="card accent-ember">
           <div class="tag">/report</div>
           <h3>Report a Fire</h3>
-          <p>Anonymous, live, and fused with real National Weather Service alerts and
-          wind data — community reports sit next to government data, not instead of it.</p>
+          <p>Anonymous pins, live for everyone, shown next to real government
+          weather alerts.</p>
         </div>
         <div class="card accent-water">
           <div class="tag">/game</div>
           <h3>Play the Game</h3>
-          <p>A retro roguelite where fire spreads, escalates, and has to be caught early —
-          the same instincts the reporting map needs, taught by making them fun.</p>
+          <p>A quick firefighting game — the same instincts as a real response:
+          what to hit first, when to fall back.</p>
         </div>
       </div>
-      <p class="lede">The game is the hook. The map is the point. Built on the same stack, in the
-      same hackathon window, so the habit of opening the app transfers from one to the other.</p>
+      <p class="lede">People don't open a safety app until something's wrong. A game people
+      want to play gets opened a lot more often — so the map underneath it does too.</p>
     </div>
   </section>
 
-  <!-- 4: REPORT MAP WALKTHROUGH -->
-  <section class="slide" data-index="3">
+  <!-- 5: REPORT MAP WALKTHROUGH -->
+  <section class="slide" data-index="4">
     <div class="chrome-top">
-      <span class="presenter"><span class="swatch" style="background: var(--ember)"></span>VEERAM — PRODUCT</span>
+      <span class="presenter"><span class="swatch" style="background: var(--spark)"></span>CAL</span>
       <span>DEMO — REPORT A FIRE</span>
     </div>
     <div class="slide-body">
       <div class="eyebrow">Walkthrough</div>
-      <h2>Built like a dispatch board, not a form.</h2>
+      <h2>What the map actually does.</h2>
       <ul class="status-list">
         <li><span class="dot" style="--dot: var(--ember)"></span>
-          <span><b>Anonymous pin drop</b> <span class="desc">— severity level (smoke / small flame /
-          large fire), coordinates rounded to ~100m so a report can't be traced to an exact address.</span></span></li>
+          <span><b>Drop a pin anonymously</b> <span class="desc">— pick a severity, and the
+          location is rounded so it can't be traced to an exact address.</span></span></li>
         <li><span class="dot" style="--dot: var(--spark)"></span>
-          <span><b>Live for everyone</b> <span class="desc">— new reports appear on every open map via
-          Supabase Realtime, no refresh needed.</span></span></li>
+          <span><b>Updates live</b> <span class="desc">— new reports show up for everyone
+          right away, no refresh needed.</span></span></li>
         <li><span class="dot" style="--dot: var(--water)"></span>
-          <span><b>Sorted by distance from you</b> <span class="desc">— the most relevant reports surface first.</span></span></li>
+          <span><b>Sorted by distance</b> <span class="desc">— closest reports to you show
+          up first.</span></span></li>
         <li><span class="dot" style="--dot: var(--blaze)"></span>
-          <span><b>Fused with official data</b> <span class="desc">— live NWS Red Flag Warnings, Fire Weather
-          Watches, and current wind direction, layered on the same map as community pins.</span></span></li>
+          <span><b>Real weather data included</b> <span class="desc">— official alerts and
+          wind direction, shown right on the same map.</span></span></li>
         <li><span class="dot" style="--dot: var(--ember)"></span>
-          <span><b>Expires on its own</b> <span class="desc">— by severity (4h / 10h / 24h), or gets
-          refreshed when anyone confirms it's "still burning."</span></span></li>
+          <span><b>Fades out on its own</b> <span class="desc">— no fire, no permanent pin.
+          Anyone can confirm one is "still burning" to keep it visible.</span></span></li>
       </ul>
     </div>
   </section>
 
-  <!-- 5: THE SECURITY STORY -->
-  <section class="slide" data-index="4">
+  <!-- 6: THE SECURITY STORY -->
+  <section class="slide" data-index="5">
     <div class="chrome-top">
-      <span class="presenter"><span class="swatch" style="background: var(--spark)"></span>CAL — TRUST & ENGINEERING</span>
+      <span class="presenter"><span class="swatch" style="background: var(--spark)"></span>CAL</span>
       <span>THE HARD PART</span>
     </div>
     <div class="slide-body">
-      <div class="eyebrow">Engineering — trust by design</div>
-      <h2>No accounts. No logins. So how do you delete your own report?</h2>
+      <div class="eyebrow">Trust, without accounts</div>
+      <h2>How do you delete your own report with no login?</h2>
       <div class="split">
         <div class="card accent-blaze">
-          <div class="tag">The obvious answer</div>
-          <h3>Add a delete button</h3>
-          <p>Anyone can click it. Which means anyone can click it on someone else's real
-          fire report — the exact abuse this app exists to prevent.</p>
+          <div class="tag">The risky way</div>
+          <h3>A delete button</h3>
+          <p>Anyone can click it — including on someone else's real report. The
+          exact abuse this app has to prevent.</p>
         </div>
         <div class="card accent-water">
-          <div class="tag">What we shipped</div>
-          <h3>A secret only you hold</h3>
-          <p>Submitting a report returns a one-time secret <code>delete_token</code>, handed back only
-          to your browser. It's checked inside a Postgres <code>SECURITY DEFINER</code> function
-          — not a client-side check.</p>
+          <div class="tag">What we built</div>
+          <h3>A secret only you get</h3>
+          <p>You get a one-time code when you report. The database checks it
+          directly — the app itself can't be tricked into skipping that check.</p>
         </div>
       </div>
-      <p class="lede">Verified end-to-end against the live database: direct table access returns
-      <code>permission denied</code>; the wrong token is a silent no-op; the right token works.
-      Same principle protects "Still burning" — anyone can confirm, no one can delete but the reporter.</p>
-    </div>
-  </section>
-
-  <!-- 6: GAME WALKTHROUGH -->
-  <section class="slide" data-index="5">
-    <div class="chrome-top">
-      <span class="presenter"><span class="swatch" style="background: var(--blaze)"></span>JOSH — GAME & FUTURE</span>
-      <span>DEMO — PLAY THE GAME</span>
-    </div>
-    <div class="slide-body">
-      <div class="eyebrow">Walkthrough</div>
-      <h2>A roguelite that teaches wildfire instincts without homework.</h2>
-      <ul class="status-list">
-        <li><span class="dot" style="--dot: var(--blaze)"></span>
-          <span><b>Fire escalates through 3 tiers</b> <span class="desc">— small → large → inferno,
-          each stage taking one more spray to fully put out.</span></span></li>
-        <li><span class="dot" style="--dot: var(--spark)"></span>
-          <span><b>A free upgrade every wave, a full shop every 5th</b> <span class="desc">— 9
-          upgrades total, drafted or bought outright with coins earned in-run.</span></span></li>
-        <li><span class="dot" style="--dot: var(--ember)"></span>
-          <span><b>Combo streaks and rare golden coins</b> <span class="desc">— reward fast,
-          decisive play over button-mashing.</span></span></li>
-        <li><span class="dot" style="--dot: var(--water)"></span>
-          <span><b>Easy/normal/hard, and touch controls</b> <span class="desc">— playable
-          one-handed on a phone, not just at a keyboard.</span></span></li>
-        <li><span class="dot" style="--dot: var(--spark)"></span>
-          <span><b>Every sprite and every sound is generated in code</b> <span class="desc">—
-          zero image or audio asset files.</span></span></li>
-      </ul>
+      <p class="lede">We tested this directly against our live database to make sure it
+      actually holds up, not just that it looks right in the code.</p>
     </div>
   </section>
 
   <!-- 7: TECH STACK -->
   <section class="slide" data-index="6">
     <div class="chrome-top">
-      <span class="presenter"><span class="swatch" style="background: var(--spark)"></span>CAL — TRUST & ENGINEERING</span>
+      <span class="presenter"><span class="swatch" style="background: var(--spark)"></span>CAL</span>
       <span>HOW IT'S BUILT</span>
     </div>
     <div class="slide-body">
       <div class="eyebrow">Architecture</div>
       <h2>One stack, two products.</h2>
       <div class="term">
-        <div class="term-row"><div class="k">Frontend</div><div class="v">React 19 + Vite + Tailwind CSS v4</div></div>
-        <div class="term-row"><div class="k">Game</div><div class="v">Phaser 3 <span>— procedural art + audio, no asset files</span></div></div>
-        <div class="term-row"><div class="k">Map</div><div class="v">Leaflet + react-leaflet</div></div>
-        <div class="term-row"><div class="k">Data</div><div class="v">Supabase <span>— Postgres, Row-Level Security, Realtime, SECURITY DEFINER functions</span></div></div>
-        <div class="term-row"><div class="k">Live feeds</div><div class="v">National Weather Service API <span>— free, keyless, zero backend proxy</span></div></div>
-        <div class="term-row"><div class="k">Hosting</div><div class="v">Vercel <span>— auto-deploy on push</span></div></div>
+        <div class="term-row"><div class="k">Frontend</div><div class="v">React + Vite</div></div>
+        <div class="term-row"><div class="k">Game</div><div class="v">Phaser 3 <span>— all art and sound generated in code</span></div></div>
+        <div class="term-row"><div class="k">Map</div><div class="v">Leaflet</div></div>
+        <div class="term-row"><div class="k">Data</div><div class="v">Supabase <span>— storage, live updates, and security rules</span></div></div>
+        <div class="term-row"><div class="k">Live feeds</div><div class="v">National Weather Service <span>— free, public data</span></div></div>
+        <div class="term-row"><div class="k">Hosting</div><div class="v">Vercel <span>— auto-deploys on push</span></div></div>
       </div>
     </div>
   </section>
 
-  <!-- 8: BY THE NUMBERS -->
+  <!-- 8: GAME WALKTHROUGH -->
   <section class="slide" data-index="7">
     <div class="chrome-top">
-      <span class="presenter"><span class="swatch" style="background: var(--spark)"></span>CAL — TRUST & ENGINEERING</span>
+      <span class="presenter"><span class="swatch" style="background: var(--blaze)"></span>JOSH</span>
+      <span>DEMO — PLAY THE GAME</span>
+    </div>
+    <div class="slide-body">
+      <div class="eyebrow">Walkthrough</div>
+      <h2>A firefighting game that's really about decisions.</h2>
+      <ul class="status-list">
+        <li><span class="dot" style="--dot: var(--blaze)"></span>
+          <span><b>Fires get worse if you wait</b> <span class="desc">— three stages, each
+          one harder to put out than the last.</span></span></li>
+        <li><span class="dot" style="--dot: var(--spark)"></span>
+          <span><b>Earn upgrades as you go</b> <span class="desc">— a free one each round,
+          a bigger shop every 5th.</span></span></li>
+        <li><span class="dot" style="--dot: var(--ember)"></span>
+          <span><b>Rewards fast, decisive play</b> <span class="desc">— combo streaks and
+          rare bonus coins.</span></span></li>
+        <li><span class="dot" style="--dot: var(--water)"></span>
+          <span><b>Playable on a phone</b> <span class="desc">— touch controls, adjustable
+          difficulty.</span></span></li>
+      </ul>
+      <p class="lede">It's not trying to be a serious simulator — it's trying to be a reason
+      to open the app again tomorrow.</p>
+    </div>
+  </section>
+
+  <!-- 9: BY THE NUMBERS -->
+  <section class="slide" data-index="8">
+    <div class="chrome-top">
+      <span class="presenter"><span class="swatch" style="background: var(--blaze)"></span>JOSH</span>
       <span>BY THE NUMBERS</span>
     </div>
     <div class="slide-body">
       <div class="eyebrow">By the numbers</div>
-      <h2>Not just a demo — verified against the real thing.</h2>
+      <h2>What actually got built today.</h2>
       <div class="stat-grid">
-        <div class="stat"><div class="n">9</div><div class="d">upgrades in the game's roguelite draft</div></div>
-        <div class="stat"><div class="n">3</div><div class="d">fire severity tiers, each harder to extinguish</div></div>
-        <div class="stat"><div class="n">2</div><div class="d">free external data sources fused into one map</div></div>
-        <div class="stat"><div class="n">0</div><div class="d">accounts required to report, confirm, or play</div></div>
-        <div class="stat"><div class="n">4/10/24</div><div class="d">hour auto-expiry window, by severity</div></div>
-        <div class="stat"><div class="n">100%</div><div class="d">tested against the live database and live NWS API — not mocked</div></div>
+        <div class="stat"><div class="n">9</div><div class="d">upgrades in the game</div></div>
+        <div class="stat"><div class="n">3</div><div class="d">fire stages to escalate through</div></div>
+        <div class="stat"><div class="n">2</div><div class="d">live data sources combined</div></div>
+        <div class="stat"><div class="n">0</div><div class="d">accounts needed to use it</div></div>
+        <div class="stat"><div class="n">4–24h</div><div class="d">auto-expiry, by severity</div></div>
+        <div class="stat"><div class="n">100%</div><div class="d">tested against the real, live systems</div></div>
       </div>
     </div>
   </section>
 
-  <!-- 9: ROADMAP -->
-  <section class="slide" data-index="8">
+  <!-- 10: ROADMAP -->
+  <section class="slide" data-index="9">
     <div class="chrome-top">
-      <span class="presenter"><span class="swatch" style="background: var(--blaze)"></span>JOSH — GAME & FUTURE</span>
-      <span>WHAT'S NEXT</span>
+      <span class="presenter"><span class="swatch" style="background: var(--blaze)"></span>JOSH</span>
+      <span>WHERE THIS GOES NEXT</span>
     </div>
     <div class="slide-body">
       <div class="eyebrow">Roadmap</div>
-      <h2>What we'd build with one more week.</h2>
+      <h2>Getting closer to the goal, not just adding features.</h2>
       <ul class="status-list">
         <li><span class="dot" style="--dot: var(--ember)"></span>
-          <span><b>Seed in-game fires from real, live reports</b> <span class="desc">— close the
-          loop between the two halves of the app instead of random placement.</span></span></li>
+          <span><b>Connect the game to real reports</b> <span class="desc">— so playing and
+          checking real risk become one habit.</span></span></li>
         <li><span class="dot" style="--dot: var(--water)"></span>
-          <span><b>Rate limiting on report submission</b> <span class="desc">— auto-expiry limits
-          how long spam stays visible, but doesn't stop a burst of it up front.</span></span></li>
+          <span><b>Add spam protection</b> <span class="desc">— keep the map trustworthy as
+          more people use it.</span></span></li>
         <li><span class="dot" style="--dot: var(--spark)"></span>
-          <span><b>Automated test suite</b> <span class="desc">— everything so far has been verified
-          by hand against the live services; that doesn't scale forever.</span></span></li>
+          <span><b>Add automated tests</b> <span class="desc">— so the safety logic keeps
+          working as this grows.</span></span></li>
       </ul>
     </div>
   </section>
 
-  <!-- 10: CLOSE / TEAM -->
-  <section class="slide hero-slide" data-index="9">
+  <!-- 11: CLOSE / TEAM -->
+  <section class="slide hero-slide" data-index="10">
     <canvas class="ember-canvas" id="emberCanvasClose"></canvas>
     <div class="chrome-top">
       <span class="presenter"><span class="swatch" style="background: var(--ash-dim)"></span>CLOSING</span>
       <span>THANK YOU</span>
     </div>
     <div class="slide-body">
-      <h1 class="masthead" style="font-size: clamp(40px, 6.5vw, 80px)">Thank<br /><em>You</em></h1>
-      <p class="hero-sub">Catching Fire — a live map, a live game, one team, one weekend.</p>
+      <h1 class="masthead" style="font-size: clamp(32px, 5vw, 56px)">Thank <em>You</em></h1>
+      <p class="hero-sub">Built in one day, aimed at one goal: make wildfire awareness
+      something people keep up with — not something they scramble for after it's too late.</p>
       <div class="team-grid">
         <div class="team-card">
           <div class="role">Product</div>
           <div class="name">Veeram</div>
-          <div class="focus">Problem framing, the report map</div>
+          <div class="focus">The problem, the goal</div>
         </div>
         <div class="team-card">
           <div class="role">Trust & Engineering</div>
           <div class="name">Cal</div>
-          <div class="focus">Security model, data architecture</div>
+          <div class="focus">The report map, security</div>
         </div>
         <div class="team-card">
           <div class="role">Game & Future</div>
           <div class="name">Josh</div>
-          <div class="focus">The roguelite, what's next</div>
+          <div class="focus">The game, what's next</div>
         </div>
       </div>
       <div class="meta-row">
@@ -866,11 +870,9 @@
     <button class="nav-btn" id="prevBtn" aria-label="Previous slide">‹</button>
     <div class="dots" id="dots" role="tablist" aria-label="Slide navigation"></div>
     <button class="nav-btn" id="nextBtn" aria-label="Next slide">›</button>
-    <div class="counter"><b id="counterCurrent">01</b> / <span id="counterTotal">10</span></div>
+    <div class="counter"><b id="counterCurrent">01</b> / <span id="counterTotal">11</span></div>
   </div>
 </div>
-
-<div class="help-hint">← → or space to navigate · Home/End to jump to start/end</div>
 
 <script>
   (function () {
@@ -952,7 +954,7 @@
 
       function seed() {
         particles = [];
-        var count = Math.round((w * h) / 26000);
+        var count = Math.round((w * h) / 30000);
         for (var i = 0; i < count; i++) {
           particles.push(spawn(Math.random() * h));
         }
@@ -963,11 +965,11 @@
         return {
           x: Math.random() * w,
           y: y === undefined ? h + 10 : y,
-          r: 1 + Math.random() * 2.2,
-          speed: 0.25 + Math.random() * 0.6,
-          drift: (Math.random() - 0.5) * 0.4,
+          r: 1 + Math.random() * 2,
+          speed: 0.2 + Math.random() * 0.5,
+          drift: (Math.random() - 0.5) * 0.35,
           color: colors[(Math.random() * colors.length) | 0],
-          alpha: 0.25 + Math.random() * 0.5,
+          alpha: 0.2 + Math.random() * 0.4,
         };
       }
 
@@ -985,7 +987,7 @@
           ctx.globalAlpha = p.alpha;
           ctx.fillStyle = p.color;
           ctx.shadowColor = p.color;
-          ctx.shadowBlur = 6;
+          ctx.shadowBlur = 5;
           ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
           ctx.fill();
         }
@@ -1003,10 +1005,9 @@
       if (!reduceMotion) {
         requestAnimationFrame(frame);
       } else {
-        // Static fallback: a soft fixed glow instead of animated drift.
         ctx.clearRect(0, 0, w, h);
         var grad = ctx.createRadialGradient(w * 0.7, h * 0.3, 0, w * 0.7, h * 0.3, Math.max(w, h) * 0.6);
-        grad.addColorStop(0, "rgba(249,115,22,0.18)");
+        grad.addColorStop(0, "rgba(249,115,22,0.16)");
         grad.addColorStop(1, "rgba(249,115,22,0)");
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);

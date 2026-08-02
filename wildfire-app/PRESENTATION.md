@@ -2,8 +2,8 @@
 
 # 🔥 Catching Fire
 
-**A community wildfire-reporting map fused with official government data —**
-**and a roguelite that makes checking it something you actually want to do.**
+**A wildfire reporting map backed by real weather data —**
+**paired with a game that gets people to actually check it.**
 
 **Event:** MarinHacks · **Team:** Veeram · Cal · Josh
 
@@ -16,115 +16,124 @@
 
 ## The problem
 
-*Presenter 1 — Product*
+*Veeram*
 
-Wildfire tools are either official or engaging. Rarely both.
+Wildfire tools are either official or actually used. Rarely both.
 
-- **Official alerts lag reality.** A Red Flag Warning covers a whole forecast zone — not the specific hillside you can smell burning right now.
-- **Community reporting apps get abandoned.** Nothing brings people back once the novelty of "report a hazard" wears off.
-- **Safety tools compete with everything else on your phone.** If it's not something you'd open voluntarily, it won't be open when it matters.
+- **Official alerts are broad.** A Red Flag Warning covers a whole region — not your street.
+- **Reporting apps get abandoned.** People stop opening them once the novelty wears off.
+- **Nobody opens a safety app for fun.** So it's not open when it actually matters.
 
 ---
 
-## The idea
+## Our goal
 
-*Presenter 1 — Product*
+*Veeram*
 
-Two products. One reason to keep coming back.
+Close the gap between spotting smoke and someone knowing about it.
 
-| | `/report` — Report a Fire | `/game` — Play the Game |
-|---|---|---|
-| | Anonymous, live, and fused with real National Weather Service alerts and wind data — community reports sit next to government data, not instead of it. | A retro roguelite where fire spreads, escalates, and has to be caught early — the same instincts the reporting map needs, taught by making them fun. |
+- **Make it fast to report** — so people do it right away, not later.
+- **Make checking it a habit** — before there's ever smoke to report.
+- **Remove the doubt** — no one should hesitate because they're not sure it's worth reporting.
 
-> The game is the hook. The map is the point. Built on the same stack, in the same hackathon window, so the habit of opening the app transfers from one to the other.
+---
+
+## The approach
+
+*Veeram*
+
+One map you check before an emergency, not just during one.
+
+| `/report` — Report a Fire | `/game` — Play the Game |
+|---|---|
+| Anonymous pins, live for everyone, shown next to real government weather alerts. | A quick firefighting game — the same instincts as a real response: what to hit first, when to fall back. |
+
+> People don't open a safety app until something's wrong. A game people want to play gets opened a lot more often — so the map underneath it does too.
 
 ---
 
 ## Demo: Report a Fire
 
-*Presenter 1 — Product*
+*Cal*
 
-Built like a dispatch board, not a form.
-
-- **Anonymous pin drop** — severity level (smoke / small flame / large fire), coordinates rounded to ~100m so a report can't be traced to an exact address.
-- **Live for everyone** — new reports appear on every open map via Supabase Realtime, no refresh needed.
-- **Sorted by distance from you** — the most relevant reports surface first.
-- **Fused with official data** — live NWS Red Flag Warnings, Fire Weather Watches, and current wind direction, layered on the same map as community pins.
-- **Expires on its own** — by severity (4h / 10h / 24h), or gets refreshed when anyone confirms it's "still burning."
+- **Drop a pin anonymously** — pick a severity, and the location is rounded so it can't be traced to an exact address.
+- **Updates live** — new reports show up for everyone right away, no refresh needed.
+- **Sorted by distance** — closest reports to you show up first.
+- **Real weather data included** — official alerts and wind direction, shown right on the same map.
+- **Fades out on its own** — no fire, no permanent pin. Anyone can confirm one is "still burning" to keep it visible.
 
 ---
 
-## The hard part: trust without accounts
+## The hard part: trust, without accounts
 
-*Presenter 2 — Trust & Engineering*
+*Cal*
 
-**No accounts. No logins. So how do you let someone delete their own report?**
+**How do you delete your own report with no login?**
 
-| ❌ The obvious answer | ✅ What we shipped |
+| ❌ The risky way | ✅ What we built |
 |---|---|
-| Add a delete button. Anyone can click it — which means anyone can click it on someone else's real fire report. The exact abuse this app exists to prevent. | Submitting a report returns a one-time secret `delete_token`, handed back only to your browser. It's checked inside a Postgres `SECURITY DEFINER` function — not a client-side check anyone could bypass. |
+| A delete button. Anyone can click it — including on someone else's real report. The exact abuse this app has to prevent. | A one-time secret code, given only to you when you report. The database checks it directly — the app itself can't be tricked into skipping that check. |
 
-Verified end-to-end against the **live database**: direct table access returns `permission denied`; the wrong token is a silent no-op; the right token works.
-
-The same "no ownership required" idea powers **"Still burning"** — anyone can corroborate a report, but only the reporter can remove it.
-
----
-
-## Demo: Play the Game
-
-*Presenter 3 — Game & Future*
-
-A roguelite that teaches wildfire instincts without feeling like homework.
-
-- **Fire escalates through 3 tiers** — small → large → inferno, each stage taking one more spray to fully put out.
-- **A free upgrade every wave, a full shop every 5th** — 9 upgrades total, drafted or bought outright with coins earned in-run.
-- **Combo streaks and rare golden coins** — reward fast, decisive play over button-mashing.
-- **Easy / normal / hard, and touch controls** — playable one-handed on a phone, not just at a keyboard.
-- **Every sprite and every sound is generated in code** — zero image or audio asset files.
+We tested this directly against our live database, to make sure it actually holds up — not just that it looks right in the code.
 
 ---
 
 ## How it's built
 
-*Presenter 2 — Trust & Engineering*
-
-One stack, two products.
+*Cal*
 
 | Layer | Choice |
 |---|---|
-| Frontend | React 19 + Vite + Tailwind CSS v4 |
-| Game | Phaser 3 — procedural art + audio, no asset files |
-| Map | Leaflet + react-leaflet |
-| Data | Supabase — Postgres, Row-Level Security, Realtime, `SECURITY DEFINER` functions |
-| Live feeds | National Weather Service API — free, keyless, zero backend proxy |
-| Hosting | Vercel — auto-deploy on push |
+| Frontend | React + Vite |
+| Game | Phaser 3 — all art and sound generated in code |
+| Map | Leaflet |
+| Data | Supabase — storage, live updates, and security rules |
+| Live feeds | National Weather Service — free, public data |
+| Hosting | Vercel — auto-deploys on push |
+
+---
+
+## Demo: Play the Game
+
+*Josh*
+
+A firefighting game that's really about decisions.
+
+- **Fires get worse if you wait** — three stages, each one harder to put out than the last.
+- **Earn upgrades as you go** — a free one each round, a bigger shop every 5th.
+- **Rewards fast, decisive play** — combo streaks and rare bonus coins.
+- **Playable on a phone** — touch controls, adjustable difficulty.
+
+It's not trying to be a serious simulator — it's trying to be a reason to open the app again tomorrow.
 
 ---
 
 ## By the numbers
 
-*Presenter 2 — Trust & Engineering*
+*Josh*
+
+What actually got built today.
 
 | | |
 |---|---|
-| **9** | upgrades in the game's roguelite draft |
-| **3** | fire severity tiers, each harder to extinguish |
-| **2** | free external data sources fused into one map |
-| **0** | accounts required to report, confirm, or play |
-| **4h / 10h / 24h** | auto-expiry window, by severity |
-| **100%** | tested against the live database and live NWS API — not mocked |
+| **9** | upgrades in the game |
+| **3** | fire stages to escalate through |
+| **2** | live data sources combined |
+| **0** | accounts needed to use it |
+| **4–24h** | auto-expiry, by severity |
+| **100%** | tested against the real, live systems |
 
 ---
 
-## What's next
+## Where this goes next
 
-*Presenter 3 — Game & Future*
+*Josh*
 
-What we'd build with one more week.
+Getting closer to the goal, not just adding features.
 
-- **Seed in-game fires from real, live reports** — close the loop between the two halves of the app instead of random placement.
-- **Rate limiting on report submission** — auto-expiry limits how long spam stays visible, but doesn't stop a burst of it up front.
-- **Automated test suite** — everything so far has been verified by hand against the live services; that doesn't scale forever.
+- **Connect the game to real reports** — so playing and checking real risk become one habit.
+- **Add spam protection** — keep the map trustworthy as more people use it.
+- **Add automated tests** — so the safety logic keeps working as this grows.
 
 ---
 
@@ -132,12 +141,12 @@ What we'd build with one more week.
 
 ## Thank you
 
-**Catching Fire** — a live map, a live game, one team, one weekend.
+Built in one day, aimed at one goal: make wildfire awareness something people keep up with — not something they scramble for after it's too late.
 
 | Product | Trust & Engineering | Game & Future |
 |---|---|---|
 | Veeram | Cal | Josh |
-| Problem framing, the report map | Security model, data architecture | The roguelite, what's next |
+| The problem, the goal | The report map, security | The game, what's next |
 
 **Try it live:** https://wildfire-app-veeram-dugars-projects.vercel.app
 
