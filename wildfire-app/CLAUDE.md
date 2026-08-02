@@ -1,4 +1,4 @@
-# Project: WildfireWatch
+# Project: Catching Fire
 
 A hackathon app combining an anonymous wildfire-reporting map with a retro
 2D wildfire-fighting game.

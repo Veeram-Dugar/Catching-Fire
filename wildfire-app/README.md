@@ -1,4 +1,4 @@
-# WildfireWatch 🔥
+# Catching Fire 🔥
 
 A community wildfire-reporting map paired with a retro 2D wildfire-fighting
 game — built for a 9-hour hackathon.
