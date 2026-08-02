@@ -44,12 +44,15 @@ export function roundForAnonymity(coord) {
   return Math.round(coord * 1000) / 1000;
 }
 
-// Reports have no owner (fully anonymous, no accounts), so there's no safe
-// way to let anyone edit or delete someone else's report — that would just
-// hand bad actors a button to take down real fires. Instead, reports
-// auto-expire on a severity-based timer: nothing to abuse because there's
-// nothing to click. A spot that keeps getting reported naturally stays
-// visible, since expiry is measured from the most recent report there.
+// Reports are fully anonymous (no accounts), so there's no safe way to let
+// anyone edit or delete someone ELSE's report — that would just hand bad
+// actors a button to take down real fires. You CAN delete your own,
+// though: submitting a report returns a one-time secret `delete_token`
+// (see MY_REPORTS_KEY below), which is required to delete it and is never
+// exposed through any read path, so nobody else can ever obtain it for
+// your report. Absent that, reports still auto-expire on a severity-based
+// timer — a spot that keeps getting reported naturally stays visible,
+// since expiry is measured from the most recent report there.
 export const SEVERITY_EXPIRY_HOURS = {
   [SEVERITY.SMOKE]: 4,
   [SEVERITY.SMALL_FIRE]: 10,
@@ -70,22 +73,41 @@ function isExpired(report, now) {
   return ageMs > hours * 60 * 60 * 1000;
 }
 
-/** Insert a new anonymous wildfire report. */
+/**
+ * Insert a new anonymous wildfire report via the insert_report() database
+ * function (not a raw table insert — see schema.sql) so it can return the
+ * delete_token, which is otherwise hidden from every other read path.
+ * Remembers the token locally so this browser can delete the report later.
+ */
 export async function submitReport({ lat, lng, severity }) {
   assertConfigured();
-  const { data, error } = await supabase
-    .from('reports')
-    .insert([
-      {
-        lat: roundForAnonymity(lat),
-        lng: roundForAnonymity(lng),
-        severity,
-      },
-    ])
-    .select();
+  const { data, error } = await supabase.rpc('insert_report', {
+    p_lat: roundForAnonymity(lat),
+    p_lng: roundForAnonymity(lng),
+    p_severity: severity,
+  });
 
   if (error) throw error;
-  return data?.[0];
+  const row = data?.[0];
+  if (row) rememberMyReport(row.id, row.delete_token);
+  return row;
+}
+
+/**
+ * Delete one of your own reports by id + the secret token you were given
+ * at submission time (see rememberMyReport). Returns true if it actually
+ * deleted something — false if the token was wrong or it already expired
+ * off the server naturally.
+ */
+export async function deleteReport(id, token) {
+  assertConfigured();
+  const { data, error } = await supabase.rpc('delete_report', {
+    p_id: id,
+    p_token: token,
+  });
+  if (error) throw error;
+  if (data) forgetMyReport(id);
+  return Boolean(data);
 }
 
 /** Fetch raw reports from the last `windowHours`, most recent first. */
@@ -94,7 +116,7 @@ export async function fetchRecentReports(limit = 200, windowHours = MAX_EXPIRY_H
   const cutoff = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('reports')
-    .select('*')
+    .select('id, lat, lng, severity, created_at') // never delete_token — see above
     .gte('created_at', cutoff)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -123,6 +145,7 @@ export async function fetchActiveReports() {
     if (!existing) {
       clusters.set(key, {
         id: report.id,
+        reportIds: [report.id], // every individual report merged into this marker
         lat: report.lat,
         lng: report.lng,
         severity: report.severity,
@@ -133,6 +156,7 @@ export async function fetchActiveReports() {
     }
 
     existing.count += 1;
+    existing.reportIds.push(report.id);
     if (new Date(report.created_at) > new Date(existing.created_at)) {
       existing.created_at = report.created_at;
     }
@@ -144,4 +168,54 @@ export async function fetchActiveReports() {
   return Array.from(clusters.values()).sort(
     (a, b) => new Date(b.created_at) - new Date(a.created_at)
   );
+}
+
+// ---------- Tracking your own reports locally ----------
+//
+// There are no accounts, so "which reports are mine" only exists in this
+// browser's localStorage: a map of report id -> its secret delete_token.
+// Losing this (clearing site data, a different device/browser) means
+// losing the ability to delete that report — there's no recovery path,
+// same tradeoff as any anonymous "keep this link/token" flow.
+
+const MY_REPORTS_KEY = 'catching-fire:my-reports';
+
+function readMyReports() {
+  try {
+    const raw = window.localStorage.getItem(MY_REPORTS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeMyReports(map) {
+  try {
+    window.localStorage.setItem(MY_REPORTS_KEY, JSON.stringify(map));
+  } catch {
+    // localStorage unavailable (e.g. private mode) — the report still
+    // submitted fine, you just won't be able to delete it later.
+  }
+}
+
+function rememberMyReport(id, deleteToken) {
+  const map = readMyReports();
+  map[id] = deleteToken;
+  writeMyReports(map);
+}
+
+function forgetMyReport(id) {
+  const map = readMyReports();
+  delete map[id];
+  writeMyReports(map);
+}
+
+/** Returns this browser's delete token for a report id, or undefined. */
+export function getMyReportToken(id) {
+  return readMyReports()[id];
+}
+
+/** True if this browser submitted (and still holds the token for) this report. */
+export function isMyReport(id) {
+  return Boolean(getMyReportToken(id));
 }

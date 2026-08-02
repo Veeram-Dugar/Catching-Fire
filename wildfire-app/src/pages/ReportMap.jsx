@@ -11,6 +11,9 @@ import 'leaflet/dist/leaflet.css';
 import {
   fetchActiveReports,
   submitReport,
+  deleteReport,
+  getMyReportToken,
+  isMyReport,
   SEVERITY,
   SEVERITY_COLOR,
 } from '../lib/supabase.js';
@@ -95,6 +98,20 @@ export default function ReportMap() {
     }
   }
 
+  /** Deletes every report in this browser's history that's part of the
+   *  given cluster — a marker can merge more than one of your own reports
+   *  at the same spot, so this clears all of them, not just one. */
+  async function handleDelete(reportIds) {
+    const mine = reportIds.filter(isMyReport);
+    try {
+      await Promise.all(mine.map((id) => deleteReport(id, getMyReportToken(id))));
+      loadReports();
+    } catch (err) {
+      setStatus('error');
+      setErrorMsg(err.message);
+    }
+  }
+
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-4 px-6 py-8">
       <div>
@@ -102,10 +119,11 @@ export default function ReportMap() {
         <p className="text-sm text-slate-400">
           Tap the map where you see smoke or flames. Reports are anonymous and
           locations are rounded for privacy. Pins fade out on their own a
-          few hours after the last report there — no one can delete a
-          report, so a fire that's still burning just keeps getting
-          reported instead. Official fire-weather alerts from the National
-          Weather Service for your area, when active, show up below.
+          few hours after the last report there. You can delete a report
+          you submitted from this browser (click its pin), but no one else
+          can — so a fire that's still burning just keeps getting reported
+          instead. Official fire-weather alerts from the National Weather
+          Service for your area, when active, show up below.
         </p>
       </div>
 
@@ -153,9 +171,19 @@ export default function ReportMap() {
               icon={coloredIcon(SEVERITY_COLOR[r.severity] ?? '#f97316')}
             >
               <Popup>
-                {r.severity.replace('_', ' ')}
-                {r.count > 1 ? ` · reported ${r.count}x` : ''} · last seen{' '}
-                {new Date(r.created_at).toLocaleString()}
+                <div>
+                  {r.severity.replace('_', ' ')}
+                  {r.count > 1 ? ` · reported ${r.count}x` : ''} · last seen{' '}
+                  {new Date(r.created_at).toLocaleString()}
+                </div>
+                {r.reportIds.some(isMyReport) && (
+                  <button
+                    onClick={() => handleDelete(r.reportIds)}
+                    className="mt-2 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-500"
+                  >
+                    Delete my report
+                  </button>
+                )}
               </Popup>
             </Marker>
           ))}

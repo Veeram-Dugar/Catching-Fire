@@ -15,13 +15,16 @@ spreading fires, earn coins, and draft upgrades between waves.
 - **Report a Fire** (`/report`) — tap a live map to anonymously drop a pin
   with a severity level (smoke, small flame, large fire). Coordinates are
   rounded to ~100m before storage so reports can't be traced to an exact
-  address. Reports have no owner and no delete/edit capability — nothing
-  for a bad actor to abuse — so they auto-expire on a severity-based timer
-  instead (smoke 4h, small flame 10h, large fire 24h); a spot that keeps
-  getting reported just stays visible longer. The page also pulls live,
-  official fire-weather alerts (Red Flag Warning, Fire Weather Watch, etc.)
-  from the National Weather Service for your area, so community reports
-  sit alongside real government data.
+  address. You can delete a report you submitted from your own browser
+  (click its pin); nobody else can delete it, since doing so requires a
+  one-time secret token only your browser ever receives, enforced by a
+  database function rather than a client-trusted check — see "Deleting
+  your own reports" below. Reports also auto-expire on a severity-based
+  timer regardless (smoke 4h, small flame 10h, large fire 24h); a spot
+  that keeps getting reported just stays visible longer. The page also
+  pulls live, official fire-weather alerts (Red Flag Warning, Fire
+  Weather Watch, etc.) from the National Weather Service for your area,
+  so community reports sit alongside real government data.
 - **Play the Game** (`/game`) — fire spawns, escalates through three tiers
   (small → large → inferno, the last only after wave 12 and taking three
   hits to fully extinguish), and spreads across the grid on a timer that
@@ -82,6 +85,31 @@ everything else works fine without it.
 Other scripts: `npm run build` (production build), `npm run preview`
 (preview the build), `npm run lint` (oxlint).
 
+### Deleting your own reports
+
+Reports have no accounts, so "ownership" can't be a login check — it's a
+one-time secret (`delete_token`) generated when you submit a report and
+handed back to your browser only, then remembered in `localStorage`.
+Deleting requires presenting that exact token.
+
+This is enforced at the database level, not just hidden in the UI:
+
+- Direct `INSERT`/`DELETE`/broad `SELECT` on the `reports` table is
+  revoked from the anonymous role entirely
+- All access instead goes through two `SECURITY DEFINER` Postgres
+  functions (`insert_report`, `delete_report` — see `supabase/schema.sql`)
+  that control exactly what's possible and what's returned
+- `delete_token` is excluded from the public read grant (column-level,
+  not row-level), so it can't be harvested off the map the way a report's
+  `id` can be — deleting requires knowing the token, and the token is
+  never exposed anywhere except to whoever just submitted that report
+
+Verified directly against a live Supabase project: direct table
+insert/delete both return `permission denied`, requesting `delete_token`
+via any `select` returns `permission denied`, deleting with the wrong
+token is a silent no-op (returns `false`), and deleting with the correct
+token actually removes the row.
+
 ## Project structure
 
 ```
@@ -103,8 +131,9 @@ Claude Code.
 **Built:**
 - Anonymous fire reporting with click-to-place pins, severity selection,
   geolocation centering, and privacy-rounded coordinates
-- Row-level-security policies allowing anonymous insert/read on `reports`
-  (no update/delete policy exists at all — reports can't be tampered with)
+- Self-service deletion of your own reports via a secret token enforced
+  by database functions (not a client-side check) — see "Deleting your
+  own reports" above; nobody can delete anyone else's report
 - Reports auto-expire per severity, and reports at the same rounded
   location merge into one marker showing the highest severity and how
   many times it's been reported — see `fetchActiveReports()` in
