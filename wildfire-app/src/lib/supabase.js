@@ -10,7 +10,13 @@ if (!isConfigured) {
   );
 }
 
-export const supabase = createClient(supabaseUrl ?? '', supabaseKey ?? '');
+// createClient() throws synchronously if the URL is empty, which would crash
+// the whole app at import time (before React even renders) whenever env vars
+// are entirely unset — e.g. a fresh deploy with no environment variables
+// configured yet. Only construct it when we actually have values, so a
+// missing config degrades to the friendly assertConfigured() error below
+// instead of a blank white screen.
+export const supabase = isConfigured ? createClient(supabaseUrl, supabaseKey) : null;
 
 function assertConfigured() {
   if (!isConfigured) {
