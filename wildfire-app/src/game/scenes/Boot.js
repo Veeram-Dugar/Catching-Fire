@@ -105,12 +105,16 @@ export default class Boot extends Phaser.Scene {
       g.clear();
     }
 
-    this.drawFireTile(g, T, false);
+    this.drawFireTile(g, T, 'small');
     g.generateTexture('tile-fire-small', T, T);
     g.clear();
 
-    this.drawFireTile(g, T, true);
+    this.drawFireTile(g, T, 'large');
     g.generateTexture('tile-fire-large', T, T);
+    g.clear();
+
+    this.drawFireTile(g, T, 'inferno');
+    g.generateTexture('tile-fire-inferno', T, T);
     g.clear();
 
     this.drawRefillTile(g, T);
@@ -121,8 +125,12 @@ export default class Boot extends Phaser.Scene {
     g.generateTexture('player', T, T);
     g.clear();
 
-    this.drawCoin(g, T);
+    this.drawCoin(g, T, false);
     g.generateTexture('coin', T, T);
+    g.clear();
+
+    this.drawCoin(g, T, true);
+    g.generateTexture('coin-golden', T, T);
     g.clear();
 
     this.drawWaterDrop(g);
@@ -161,38 +169,43 @@ export default class Boot extends Phaser.Scene {
     g.strokeRect(0.5, 0.5, T - 1, T - 1);
   }
 
-  drawFireTile(g, T, large) {
-    // Scorched ground base.
+  drawFireTile(g, T, tier) {
+    // tier: 'small' | 'large' | 'inferno' — inferno is the toughest, only
+    // seen in later waves, and reads as visibly angrier than a large fire.
+    const large = tier === 'large' || tier === 'inferno';
+    const inferno = tier === 'inferno';
+
+    // Scorched ground base — inferno chars the ground almost black.
     g.fillStyle(0x1e3a24, 1);
     g.fillRect(0, 0, T, T);
-    g.fillStyle(0x2b2018, 1);
+    g.fillStyle(inferno ? 0x1a1210 : 0x2b2018, 1);
     g.fillRect(0, T - 8, T, 8);
 
     const cx = T / 2;
     const baseY = T - 6;
-    const scale = large ? 1 : 0.72;
+    const scale = inferno ? 1.15 : large ? 1 : 0.72;
 
     // Soft glow halo behind the flame.
-    g.fillStyle(large ? 0xf97316 : 0xfb923c, 0.18);
-    g.fillCircle(cx, baseY - 10 * scale, 15 * scale);
+    g.fillStyle(inferno ? 0x7c2d12 : large ? 0xf97316 : 0xfb923c, inferno ? 0.3 : 0.18);
+    g.fillCircle(cx, baseY - 10 * scale, (inferno ? 18 : 15) * scale);
 
     if (large) {
       // A second, offset tongue behind the main flame for a flicker look.
-      g.fillStyle(0xea580c, 1);
+      g.fillStyle(inferno ? 0x991b1b : 0xea580c, 1);
       g.fillPoints(flamePoints(cx - 4, baseY, scale * 0.85, 0.9), true);
     }
 
-    g.fillStyle(large ? 0xdc2626 : 0xea580c, 1);
+    g.fillStyle(inferno ? 0x450a0a : large ? 0xdc2626 : 0xea580c, 1);
     g.fillPoints(flamePoints(cx, baseY, scale, 1), true);
 
-    g.fillStyle(0xf97316, 1);
+    g.fillStyle(inferno ? 0xb91c1c : 0xf97316, 1);
     g.fillPoints(flamePoints(cx, baseY, scale, 0.72), true);
 
-    g.fillStyle(0xfacc15, 1);
+    g.fillStyle(inferno ? 0xf97316 : 0xfacc15, 1);
     g.fillPoints(flamePoints(cx, baseY, scale, 0.42), true);
 
     g.fillStyle(0xfff7ed, 0.9);
-    g.fillPoints(flamePoints(cx, baseY, scale, 0.2), true);
+    g.fillPoints(flamePoints(cx, baseY, scale, inferno ? 0.24 : 0.2), true);
 
     if (large) {
       g.fillStyle(0xfde047, 1);
@@ -200,10 +213,20 @@ export default class Boot extends Phaser.Scene {
       g.fillCircle(cx + 9, 5, 1.5);
       g.fillCircle(cx + 2, 3, 1.5);
 
-      // Faint smoke puffs drifting up.
-      g.fillStyle(0x475569, 0.3);
-      g.fillCircle(cx - 6, 5, 3);
-      g.fillCircle(cx + 5, 3, 2.5);
+      // Faint smoke puffs drifting up — thicker and darker for inferno.
+      g.fillStyle(0x475569, inferno ? 0.5 : 0.3);
+      g.fillCircle(cx - 6, 5, inferno ? 4 : 3);
+      g.fillCircle(cx + 5, 3, inferno ? 3.5 : 2.5);
+    }
+
+    if (inferno) {
+      g.fillStyle(0xfacc15, 1);
+      g.fillCircle(cx - 3, 2, 1.3);
+      g.fillCircle(cx + 8, 9, 1.3);
+      g.fillStyle(0x1e293b, 0.45);
+      g.fillCircle(cx, 1, 3);
+      g.lineStyle(1, 0x000000, 0.4);
+      g.strokeRect(0.5, 0.5, T - 1, T - 1);
     }
   }
 
@@ -297,18 +320,23 @@ export default class Boot extends Phaser.Scene {
     g.strokeRoundedRect(cx - 6, T - 24, 12, 12, 3);
   }
 
-  drawCoin(g, T) {
+  drawCoin(g, T, golden = false) {
     const cx = T / 2;
     const cy = T / 2;
+
+    if (golden) {
+      g.fillStyle(0xfde047, 0.35);
+      g.fillCircle(cx, cy, T * 0.42);
+    }
 
     g.fillStyle(0x000000, 0.2);
     g.fillCircle(cx, cy + 1, T * 0.28);
 
-    g.fillStyle(0x92400e, 1);
+    g.fillStyle(golden ? 0xb45309 : 0x92400e, 1);
     g.fillCircle(cx, cy, T * 0.29);
-    g.fillStyle(0xeab308, 1);
+    g.fillStyle(golden ? 0xfacc15 : 0xeab308, 1);
     g.fillCircle(cx, cy, T * 0.27);
-    g.fillStyle(0xfde047, 1);
+    g.fillStyle(golden ? 0xfef9c3 : 0xfde047, 1);
     g.fillCircle(cx, cy, T * 0.2);
     g.fillStyle(0xfacc15, 1);
     g.fillRect(cx - 2, cy - T * 0.13, 4, T * 0.26);
@@ -321,7 +349,13 @@ export default class Boot extends Phaser.Scene {
     g.fillRect(cx + T * 0.14, cy - T * 0.18, 2, 5);
     g.fillRect(cx + T * 0.11, cy - T * 0.155, 5, 2);
 
-    g.lineStyle(1, 0x78350f, 0.7);
+    if (golden) {
+      // A second sparkle so it reads as clearly rarer than a normal coin.
+      g.fillRect(cx - T * 0.22, cy + T * 0.08, 2, 5);
+      g.fillRect(cx - T * 0.25, cy + T * 0.105, 5, 2);
+    }
+
+    g.lineStyle(1, golden ? 0xb45309 : 0x78350f, 0.7);
     g.strokeCircle(cx, cy, T * 0.29);
   }
 

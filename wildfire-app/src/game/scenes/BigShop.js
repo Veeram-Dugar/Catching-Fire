@@ -17,8 +17,10 @@ export default class BigShop extends Phaser.Scene {
 
   create() {
     const { width } = this.scale;
+    this.panelX = width / 2 - 260;
+    this.panelWidth = 520;
 
-    drawPanel(this, width / 2 - 180, 10, 360, 450, 0xfde047);
+    drawPanel(this, this.panelX, 10, this.panelWidth, 470, 0xfde047);
 
     this.add
       .text(width / 2, 30, `WAVE ${this.state.wave} CLEARED`, {
@@ -68,23 +70,28 @@ export default class BigShop extends Phaser.Scene {
   }
 
   buildRow(key, y) {
-    const { width } = this.scale;
-    const label = this.add.text(width / 2 - 190, y, '', {
+    const label = this.add.text(this.panelX + 20, y, '', {
       fontFamily: 'monospace',
-      fontSize: '12px',
+      fontSize: '13px',
       color: '#e2e8f0',
     });
+    const cost = this.add.text(this.panelX + 270, y, '', {
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      color: '#fde047',
+    });
     const buyBtn = this.add
-      .text(width / 2 + 140, y, '[ BUY ]', {
+      .text(this.panelX + this.panelWidth - 20, y, '[ BUY ]', {
         fontFamily: 'monospace',
-        fontSize: '12px',
+        fontSize: '13px',
         color: '#4ade80',
       })
+      .setOrigin(1, 0)
       .setInteractive({ useHandCursor: true });
 
     buyBtn.on('pointerdown', () => this.buyUpgrade(key));
 
-    return { label, buyBtn };
+    return { label, cost, buyBtn };
   }
 
   buyUpgrade(key) {
@@ -107,9 +114,9 @@ export default class BigShop extends Phaser.Scene {
       const maxed = level >= UPGRADE_MAX_LEVEL[key];
       const cost = maxed ? null : UPGRADE_COSTS[key](level);
 
-      row.label.setText(
-        `${UPGRADE_LABELS[key]}  Lv.${level}${maxed ? ' (MAX)' : `   Cost: ${cost}`}`
-      );
+      row.label.setText(`${UPGRADE_LABELS[key]}  Lv.${level}`);
+      row.cost.setText(maxed ? '(MAX)' : `Cost: ${cost}`);
+      row.cost.setColor(maxed ? '#64748b' : '#fde047');
 
       if (maxed) {
         row.buyBtn.setText('[ MAX ]');

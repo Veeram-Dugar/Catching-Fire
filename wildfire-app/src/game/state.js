@@ -101,7 +101,7 @@ export function coinMagnetRadius(level) {
 }
 
 export function coinValue(level) {
-  return 10 + (level - 1) * 2; // Lv.1 -> 10, Lv.8 -> 24
+  return 6 + (level - 1) * 1; // Lv.1 -> 6, Lv.8 -> 13
 }
 
 export function emberShieldCharges(level) {
