@@ -5,7 +5,7 @@
 **A community wildfire-reporting map fused with official government data —**
 **and a roguelite that makes checking it something you actually want to do.**
 
-**Event:** [Hackathon name] · **Team:** [Name 1] · [Name 2] · [Name 3]
+**Event:** MarinHacks · **Team:** Veeram · Cal · Josh
 
 **Live demo:** https://wildfire-app-veeram-dugars-projects.vercel.app
 **Source:** https://github.com/Veeram-Dugar/Catching-Fire
@@ -136,7 +136,7 @@ What we'd build with one more week.
 
 | Product | Trust & Engineering | Game & Future |
 |---|---|---|
-| [Name 1] | [Name 2] | [Name 3] |
+| Veeram | Cal | Josh |
 | Problem framing, the report map | Security model, data architecture | The roguelite, what's next |
 
 **Try it live:** https://wildfire-app-veeram-dugars-projects.vercel.app
