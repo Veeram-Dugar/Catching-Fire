@@ -1,0 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import "tailwindcss";
+
+:root {
+  --font-retro: 'Press Start 2P', system-ui, monospace;
+}
+
+body {
+  margin: 0;
+  background-color: #0b1020;
+}
+
+.font-retro {
+  font-family: var(--font-retro);
+}
