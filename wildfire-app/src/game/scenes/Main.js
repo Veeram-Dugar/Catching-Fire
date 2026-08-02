@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
 import { TILE_SIZE, GRID_COLS, GRID_ROWS } from '../config.js';
+import {
+  waterCapacityMultiplier,
+  moveSpeedMultiplier,
+  hoseRangeRadius,
+} from '../state.js';
 
 const TILE_STATE = {
   GRASS: 'grass',
@@ -9,9 +14,8 @@ const TILE_STATE = {
 };
 
 const HUD_HEIGHT = 64;
-const BASE_MAX_WATER = 100;
-const BASE_MOVE_SPEED = 140;
-const BASE_HOSE_RADIUS_TILES = 1; // in addition to upgrade levels
+const BASE_MAX_WATER = 120;
+const BASE_MOVE_SPEED = 160;
 const LOSE_COVERAGE_RATIO = 0.6; // lose if fire covers this fraction of grass tiles
 
 export default class Main extends Phaser.Scene {
@@ -23,7 +27,7 @@ export default class Main extends Phaser.Scene {
     this.state = this.game.registry.get('state');
     this.grid = []; // 2D array of TILE_STATE
     this.tileSprites = []; // 2D array of Phaser images mirroring `grid`
-    this.water = BASE_MAX_WATER * this.state.upgrades.waterCapacity;
+    this.water = BASE_MAX_WATER * waterCapacityMultiplier(this.state.upgrades.waterCapacity);
     this.gameOver = false;
   }
 
@@ -197,10 +201,11 @@ export default class Main extends Phaser.Scene {
 
   updateHud() {
     const { coins, wave, upgrades } = this.state;
+    const maxWater = BASE_MAX_WATER * waterCapacityMultiplier(upgrades.waterCapacity);
     this.hudText.setText(
-      `Wave ${wave}   Coins: ${coins}   Water: ${Math.round(this.water)}/${
-        BASE_MAX_WATER * upgrades.waterCapacity
-      }   [Space] spray`
+      `Wave ${wave}   Coins: ${coins}   Water: ${Math.round(this.water)}/${Math.round(
+        maxWater
+      )}   [Space] spray`
     );
   }
 
@@ -209,7 +214,7 @@ export default class Main extends Phaser.Scene {
   update(_time, delta) {
     if (this.gameOver) return;
 
-    const speed = BASE_MOVE_SPEED * this.state.upgrades.moveSpeed;
+    const speed = BASE_MOVE_SPEED * moveSpeedMultiplier(this.state.upgrades.moveSpeed);
     const left = this.cursors.left.isDown || this.wasd.A.isDown;
     const right = this.cursors.right.isDown || this.wasd.D.isDown;
     const up = this.cursors.up.isDown || this.wasd.W.isDown;
@@ -224,9 +229,9 @@ export default class Main extends Phaser.Scene {
     this.player.setVelocity(vx, vy);
 
     // Water regen (slow, unless standing on a refill tile).
-    const maxWater = BASE_MAX_WATER * this.state.upgrades.waterCapacity;
+    const maxWater = BASE_MAX_WATER * waterCapacityMultiplier(this.state.upgrades.waterCapacity);
     const onRefill = this.currentPlayerTile()?.state === TILE_STATE.REFILL;
-    const regenRate = onRefill ? 40 : 4; // per second
+    const regenRate = onRefill ? 40 : 5; // per second
     this.water = Math.min(maxWater, this.water + (regenRate * delta) / 1000);
 
     if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
@@ -250,7 +255,7 @@ export default class Main extends Phaser.Scene {
 
     const col = Math.floor(this.player.x / TILE_SIZE);
     const row = Math.floor((this.player.y - HUD_HEIGHT) / TILE_SIZE);
-    const radius = BASE_HOSE_RADIUS_TILES + (this.state.upgrades.hoseRange - 1);
+    const radius = hoseRangeRadius(this.state.upgrades.hoseRange);
 
     let hitSomething = false;
 
