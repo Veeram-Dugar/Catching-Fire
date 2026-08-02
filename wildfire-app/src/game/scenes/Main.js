@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, GRID_COLS, GRID_ROWS } from '../config.js';
+import { TILE_SIZE, GRID_COLS, GRID_ROWS, GRASS_VARIANT_COUNT } from '../config.js';
 import {
   waterCapacityMultiplier,
   moveSpeedMultiplier,
@@ -29,14 +29,25 @@ const BASE_MOVE_SPEED = 160;
 const BASE_SPRAY_COST = 15;
 const LOSE_COVERAGE_RATIO = 0.72; // lose if fire covers this fraction of grass tiles
 
-// Both curves grow exponentially with wave number (capped) so the game
-// keeps escalating well past what a linear ramp could sustain.
+// The first EASY_WAVES stay nearly flat so new runs have room to breathe;
+// difficulty only starts compounding exponentially after that, capped so
+// it stays hard-but-survivable rather than spiraling into "impossible."
+const EASY_WAVES = 15;
+
 function fireCountForWave(wave) {
-  return Math.min(2 + Math.round(Math.pow(1.13, wave - 1)), 36);
+  if (wave <= EASY_WAVES) {
+    return 2 + Math.floor((wave - 1) / 3); // wave1: 2 ... wave15: 6
+  }
+  const overflow = wave - EASY_WAVES;
+  return Math.min(6 + Math.round(Math.pow(1.14, overflow)), 30);
 }
 
 function spreadDelayForWave(wave) {
-  return Math.max(950 * Math.pow(0.94, wave - 1), 300);
+  if (wave <= EASY_WAVES) {
+    return 900 - (wave - 1) * 10; // wave1: 900ms ... wave15: 760ms
+  }
+  const overflow = wave - EASY_WAVES;
+  return Math.max(760 * Math.pow(0.93, overflow), 350);
 }
 
 export default class Main extends Phaser.Scene {
@@ -93,15 +104,18 @@ export default class Main extends Phaser.Scene {
   // ---------- Grid setup ----------
 
   buildGrid() {
+    this.grassVariant = []; // 2D array; each grass tile keeps its texture variant
     for (let row = 0; row < GRID_ROWS; row++) {
       this.grid[row] = [];
       this.tileSprites[row] = [];
+      this.grassVariant[row] = [];
       for (let col = 0; col < GRID_COLS; col++) {
         this.grid[row][col] = TILE_STATE.GRASS;
+        this.grassVariant[row][col] = Phaser.Math.Between(0, GRASS_VARIANT_COUNT - 1);
         const sprite = this.add.image(
           col * TILE_SIZE + TILE_SIZE / 2,
           row * TILE_SIZE + TILE_SIZE / 2 + HUD_HEIGHT,
-          'tile-grass'
+          `tile-grass-${this.grassVariant[row][col]}`
         );
         this.tileSprites[row][col] = sprite;
       }
@@ -130,7 +144,7 @@ export default class Main extends Phaser.Scene {
     this.grid[row][col] = newState;
     const key =
       newState === TILE_STATE.GRASS
-        ? 'tile-grass'
+        ? `tile-grass-${this.grassVariant[row][col]}`
         : newState === TILE_STATE.FIRE_SMALL
         ? 'tile-fire-small'
         : newState === TILE_STATE.FIRE_LARGE
@@ -154,7 +168,7 @@ export default class Main extends Phaser.Scene {
     // already spreads at the large-fire rate below, not the small one.
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
-        if (this.grid[row][col] === TILE_STATE.FIRE_SMALL && Math.random() < 0.2 * retardant) {
+        if (this.grid[row][col] === TILE_STATE.FIRE_SMALL && Math.random() < 0.16 * retardant) {
           this.setTile(row, col, TILE_STATE.FIRE_LARGE);
         }
       }
@@ -165,7 +179,7 @@ export default class Main extends Phaser.Scene {
       for (let col = 0; col < GRID_COLS; col++) {
         const tile = this.grid[row][col];
         if (tile === TILE_STATE.FIRE_SMALL || tile === TILE_STATE.FIRE_LARGE) {
-          const spreadChance = (tile === TILE_STATE.FIRE_LARGE ? 0.3 : 0.14) * retardant;
+          const spreadChance = (tile === TILE_STATE.FIRE_LARGE ? 0.26 : 0.11) * retardant;
           const neighbors = [
             [row - 1, col],
             [row + 1, col],

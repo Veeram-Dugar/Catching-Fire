@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { UPGRADE_LABELS, UPGRADE_COSTS, UPGRADE_MAX_LEVEL } from '../state.js';
+import { drawPanel } from '../ui.js';
 
 // The full paid shop, shown every BIG_SHOP_INTERVAL waves (see state.js)
 // so coins saved between free drafts have somewhere meaningful to go —
@@ -16,6 +17,8 @@ export default class BigShop extends Phaser.Scene {
 
   create() {
     const { width } = this.scale;
+
+    drawPanel(this, width / 2 - 180, 10, 360, 450, 0xfde047);
 
     this.add
       .text(width / 2, 30, `WAVE ${this.state.wave} CLEARED`, {

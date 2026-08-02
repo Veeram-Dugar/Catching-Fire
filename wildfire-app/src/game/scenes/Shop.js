@@ -5,6 +5,7 @@ import {
   drawUpgradeOptions,
   BIG_SHOP_INTERVAL,
 } from '../state.js';
+import { drawPanel } from '../ui.js';
 
 const REROLL_BASE_COST = 12;
 
@@ -20,6 +21,8 @@ export default class Shop extends Phaser.Scene {
 
   create() {
     const { width } = this.scale;
+
+    drawPanel(this, width / 2 - 180, 12, 360, 390, 0x4ade80);
 
     this.add
       .text(width / 2, 36, `WAVE ${this.state.wave} CLEARED`, {

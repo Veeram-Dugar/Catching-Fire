@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { getBestWave, BIG_SHOP_INTERVAL } from '../state.js';
+import { drawPanel } from '../ui.js';
 
 export default class Menu extends Phaser.Scene {
   constructor() {
@@ -8,6 +9,8 @@ export default class Menu extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+
+    drawPanel(this, width / 2 - 170, 100, 340, 300, 0xf97316);
 
     this.add
       .text(width / 2, height / 2 - 90, 'CATCHING\nFIRE', {

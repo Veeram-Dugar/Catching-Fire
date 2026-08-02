@@ -8,6 +8,7 @@ import BigShop from './scenes/BigShop.js';
 export const TILE_SIZE = 32;
 export const GRID_COLS = 20;
 export const GRID_ROWS = 14;
+export const GRASS_VARIANT_COUNT = 3; // distinct grass textures, to break up tiling
 
 export function createGameConfig(parentId) {
   return {
