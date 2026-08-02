@@ -8,6 +8,9 @@ spreading fires, earn coins, and upgrade your gear between waves.
 - **Report a Fire** — tap a live map to anonymously drop a pin with a
   severity level (smoke, small flame, large fire). Coordinates are rounded
   to ~100m before storage so reports can't be traced to an exact address.
+  Reports have no owner and no delete/edit capability (nothing for a bad
+  actor to abuse), so they instead auto-expire on a severity-based timer —
+  a spot that keeps getting reported just stays visible longer.
 - **Play the Game** — a Phaser-powered grid where fire spawns, escalates,
   and spreads to neighboring tiles on a timer. Move with arrow keys/WASD,
   spray with spacebar to knock down fires and collect coins, then spend
@@ -76,6 +79,11 @@ Claude Code.
 - Anonymous fire reporting: click-to-place pin, severity selector, geolocation
   centering, live markers pulled from Supabase, and privacy-rounded coordinates
 - Row-level-security policies allowing anonymous insert/read on `reports`
+  (no update/delete policy exists at all — reports can't be tampered with)
+- Reports auto-expire per severity (smoke 4h, small flame 10h, large fire
+  24h) and reports at the same rounded location merge into one marker
+  showing the highest severity and how many times it's been reported —
+  see `fetchActiveReports()` in `src/lib/supabase.js`
 - Full game loop: fire spawning + spreading + escalation, spray/extinguish,
   coin collection, water resource with regen and refill tiles, win/lose states,
   and wave progression with a shop between waves
@@ -89,7 +97,9 @@ Claude Code.
   (`buildGrid()`), but it isn't wired up yet
 - Real-time report updates on the map (currently reloads only after your own
   submission, no live subscription to other users' reports)
-- Any report moderation, rate limiting, or spam prevention
+- Rate limiting or spam prevention on report submission (auto-expiry limits
+  how long spam stays visible, but doesn't stop someone from submitting a
+  burst of fake reports in the first place)
 - Automated tests
 - Screenshots in this README
 

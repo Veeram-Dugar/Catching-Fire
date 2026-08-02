@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchRecentReports } from '../lib/supabase.js';
+import { fetchActiveReports } from '../lib/supabase.js';
 
 export default function Home() {
   const [reportCount, setReportCount] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchRecentReports(200)
+    fetchActiveReports()
       .then((reports) => setReportCount(reports.length))
       .catch((err) => setError(err.message));
   }, []);
@@ -49,7 +49,7 @@ export default function Home() {
       <div className="text-xs text-slate-500">
         {error && <span>Couldn't load live reports ({error})</span>}
         {reportCount !== null && !error && (
-          <span>{reportCount} reports in the community database</span>
+          <span>{reportCount} active report{reportCount === 1 ? '' : 's'} right now</span>
         )}
       </div>
 

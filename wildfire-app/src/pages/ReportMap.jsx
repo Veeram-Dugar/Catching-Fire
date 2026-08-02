@@ -9,7 +9,7 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  fetchRecentReports,
+  fetchActiveReports,
   submitReport,
   SEVERITY,
   SEVERITY_COLOR,
@@ -58,7 +58,7 @@ export default function ReportMap() {
   }, []);
 
   function loadReports() {
-    fetchRecentReports()
+    fetchActiveReports()
       .then(setReports)
       .catch((err) => setErrorMsg(err.message));
   }
@@ -83,7 +83,10 @@ export default function ReportMap() {
         <h1 className="text-xl font-semibold text-orange-300">Report a Fire</h1>
         <p className="text-sm text-slate-400">
           Tap the map where you see smoke or flames. Reports are anonymous and
-          locations are rounded for privacy.
+          locations are rounded for privacy. Pins fade out on their own a
+          few hours after the last report there — no one can delete a
+          report, so a fire that's still burning just keeps getting
+          reported instead.
         </p>
       </div>
 
@@ -107,7 +110,8 @@ export default function ReportMap() {
               icon={coloredIcon(SEVERITY_COLOR[r.severity] ?? '#f97316')}
             >
               <Popup>
-                {r.severity.replace('_', ' ')} · reported{' '}
+                {r.severity.replace('_', ' ')}
+                {r.count > 1 ? ` · reported ${r.count}x` : ''} · last seen{' '}
                 {new Date(r.created_at).toLocaleString()}
               </Popup>
             </Marker>
