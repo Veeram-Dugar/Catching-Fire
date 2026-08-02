@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
-import { UPGRADE_LABELS, UPGRADE_DESCRIPTIONS, drawUpgradeOptions } from '../state.js';
+import {
+  UPGRADE_LABELS,
+  UPGRADE_DESCRIPTIONS,
+  drawUpgradeOptions,
+  BIG_SHOP_INTERVAL,
+} from '../state.js';
 
 const REROLL_BASE_COST = 12;
 
@@ -24,8 +29,13 @@ export default class Shop extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    const nextWave = this.state.wave + 1;
+    const hint =
+      nextWave % BIG_SHOP_INTERVAL === 0
+        ? `Choose one upgrade — it's free (paid shop after Wave ${nextWave})`
+        : "Choose one upgrade — it's free";
     this.add
-      .text(width / 2, 60, 'Choose one upgrade — it\'s free', {
+      .text(width / 2, 60, hint, {
         fontFamily: 'monospace',
         fontSize: '12px',
         color: '#94a3b8',
@@ -63,7 +73,10 @@ export default class Shop extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .setVisible(false);
-    this.continueBtn.on('pointerdown', () => this.scene.start('Main'));
+    this.continueBtn.on('pointerdown', () => {
+      this.state.wave += 1;
+      this.scene.start('Main');
+    });
 
     this.refresh();
   }

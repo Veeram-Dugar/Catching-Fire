@@ -3,6 +3,7 @@ import Boot from './scenes/Boot.js';
 import Menu from './scenes/Menu.js';
 import Main from './scenes/Main.js';
 import Shop from './scenes/Shop.js';
+import BigShop from './scenes/BigShop.js';
 
 export const TILE_SIZE = 32;
 export const GRID_COLS = 20;
@@ -20,6 +21,6 @@ export function createGameConfig(parentId) {
       default: 'arcade',
       arcade: { debug: false },
     },
-    scene: [Boot, Menu, Main, Shop],
+    scene: [Boot, Menu, Main, Shop, BigShop],
   };
 }

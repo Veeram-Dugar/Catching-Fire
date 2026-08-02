@@ -3,6 +3,11 @@
 // attached to game.registry). Also holds small localStorage-backed
 // roguelite meta stats (best wave reached) that persist across runs.
 
+// A full paid shop appears every Nth wave clear; other clears offer a
+// free 1-of-3 draft instead. Shared so Main.js's routing and any UI
+// hinting at it stay in sync.
+export const BIG_SHOP_INTERVAL = 5;
+
 export function createInitialState() {
   return {
     coins: 0,
@@ -19,6 +24,9 @@ export function createInitialUpgrades() {
     sprayEfficiency: 1, // multiplier on water cost per spray (lower is cheaper)
     coinMagnet: 1, // pickup radius + coin value
     emberShield: 0, // wave-saving charges per wave; starts unowned
+    fireRetardant: 1, // multiplier on fire spread/escalation chance
+    waterRegen: 1, // passive water regen rate, per second
+    sprinklerDrone: 0, // auto-extinguishes fires on a timer; starts unowned
   };
 }
 
@@ -29,6 +37,9 @@ export const UPGRADE_LABELS = {
   sprayEfficiency: 'Nozzle Tuning',
   coinMagnet: 'Coin Magnet',
   emberShield: 'Ember Shield',
+  fireRetardant: 'Fire Retardant',
+  waterRegen: 'Canteen Refill',
+  sprinklerDrone: 'Sprinkler Drone',
 };
 
 export const UPGRADE_DESCRIPTIONS = {
@@ -38,6 +49,9 @@ export const UPGRADE_DESCRIPTIONS = {
   sprayEfficiency: 'Cheaper sprays',
   coinMagnet: 'Bigger pickup range + coin value',
   emberShield: 'Auto-save a wave from disaster',
+  fireRetardant: 'Fires spread & escalate slower',
+  waterRegen: 'Faster passive water regen',
+  sprinklerDrone: 'Auto-extinguishes fires over time',
 };
 
 export const UPGRADE_MAX_LEVEL = {
@@ -47,6 +61,9 @@ export const UPGRADE_MAX_LEVEL = {
   sprayEfficiency: 8,
   coinMagnet: 8,
   emberShield: 3,
+  fireRetardant: 5,
+  waterRegen: 8,
+  sprinklerDrone: 3,
 };
 
 export const UPGRADE_COSTS = {
@@ -56,6 +73,9 @@ export const UPGRADE_COSTS = {
   sprayEfficiency: (level) => 12 + level * 8,
   coinMagnet: (level) => 10 + level * 7,
   emberShield: (level) => 35 + level * 30,
+  fireRetardant: (level) => 18 + level * 14,
+  waterRegen: (level) => 12 + level * 8,
+  sprinklerDrone: (level) => 40 + level * 35,
 };
 
 // Levels scale sub-linearly and cap at UPGRADE_MAX_LEVEL so a maxed-out
@@ -86,6 +106,20 @@ export function coinValue(level) {
 
 export function emberShieldCharges(level) {
   return level; // 0 (unowned) .. 3
+}
+
+export function fireRetardantMultiplier(level) {
+  return Math.max(0.6, 1 - (level - 1) * 0.1); // Lv.1 -> 1x, Lv.5 -> 0.6x spread/escalation chance
+}
+
+export function waterRegenPerSecond(level) {
+  return 5 + (level - 1) * 2; // Lv.1 -> 5/s, Lv.8 -> 19/s
+}
+
+/** Returns the auto-extinguish interval in ms, or null if not owned. */
+export function sprinklerIntervalMs(level) {
+  if (level <= 0) return null;
+  return 7000 - (level - 1) * 1500; // Lv.1 -> 7s, Lv.3 -> 4s
 }
 
 // ---------- Roguelite draft helpers ----------

@@ -8,8 +8,12 @@ import {
   coinMagnetRadius,
   coinValue,
   emberShieldCharges,
+  fireRetardantMultiplier,
+  waterRegenPerSecond,
+  sprinklerIntervalMs,
   createInitialUpgrades,
   recordBestWave,
+  BIG_SHOP_INTERVAL,
 } from '../state.js';
 
 const TILE_STATE = {
@@ -24,6 +28,16 @@ const BASE_MAX_WATER = 120;
 const BASE_MOVE_SPEED = 160;
 const BASE_SPRAY_COST = 15;
 const LOSE_COVERAGE_RATIO = 0.72; // lose if fire covers this fraction of grass tiles
+
+// Both curves grow exponentially with wave number (capped) so the game
+// keeps escalating well past what a linear ramp could sustain.
+function fireCountForWave(wave) {
+  return Math.min(2 + Math.round(Math.pow(1.13, wave - 1)), 36);
+}
+
+function spreadDelayForWave(wave) {
+  return Math.max(950 * Math.pow(0.94, wave - 1), 300);
+}
 
 export default class Main extends Phaser.Scene {
   constructor() {
@@ -46,13 +60,22 @@ export default class Main extends Phaser.Scene {
     this.buildHud();
     this.buildInput();
 
-    // Fire spreads on a timer, gets a bit faster each wave.
-    const spreadDelay = Math.max(950 - this.state.wave * 45, 400);
+    // Fire spreads on a timer, gets exponentially faster each wave.
     this.spreadTimer = this.time.addEvent({
-      delay: spreadDelay,
+      delay: spreadDelayForWave(this.state.wave),
       loop: true,
       callback: () => this.spreadFire(),
     });
+
+    // Sprinkler Drone: passively auto-extinguishes fires on its own timer.
+    const sprinklerInterval = sprinklerIntervalMs(this.state.upgrades.sprinklerDrone);
+    if (sprinklerInterval) {
+      this.sprinklerTimer = this.time.addEvent({
+        delay: sprinklerInterval,
+        loop: true,
+        callback: () => this.sprinklerTick(),
+      });
+    }
 
     this.coinsGroup = this.physics.add.group();
 
@@ -88,10 +111,10 @@ export default class Main extends Phaser.Scene {
     this.setTile(2, 2, TILE_STATE.REFILL);
     this.setTile(GRID_ROWS - 3, GRID_COLS - 3, TILE_STATE.REFILL);
 
-    // Seed initial fires at random. More fires each wave. Stretch goal:
-    // seed from real Supabase reports instead of random placement (not
-    // yet implemented — see README's "stretch goals" section).
-    const fireCount = Math.min(2 + this.state.wave, 12);
+    // Seed initial fires at random, growing exponentially with wave.
+    // Stretch goal: seed from real Supabase reports instead of random
+    // placement (not yet implemented — see README's "stretch goals").
+    const fireCount = fireCountForWave(this.state.wave);
     let placed = 0;
     while (placed < fireCount) {
       const row = Phaser.Math.Between(0, GRID_ROWS - 1);
@@ -125,11 +148,13 @@ export default class Main extends Phaser.Scene {
   spreadFire() {
     if (this.gameOver) return;
 
+    const retardant = fireRetardantMultiplier(this.state.upgrades.fireRetardant);
+
     // Escalate first so a tile that grows into a large fire this tick
     // already spreads at the large-fire rate below, not the small one.
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
-        if (this.grid[row][col] === TILE_STATE.FIRE_SMALL && Math.random() < 0.2) {
+        if (this.grid[row][col] === TILE_STATE.FIRE_SMALL && Math.random() < 0.2 * retardant) {
           this.setTile(row, col, TILE_STATE.FIRE_LARGE);
         }
       }
@@ -140,7 +165,7 @@ export default class Main extends Phaser.Scene {
       for (let col = 0; col < GRID_COLS; col++) {
         const tile = this.grid[row][col];
         if (tile === TILE_STATE.FIRE_SMALL || tile === TILE_STATE.FIRE_LARGE) {
-          const spreadChance = tile === TILE_STATE.FIRE_LARGE ? 0.3 : 0.14;
+          const spreadChance = (tile === TILE_STATE.FIRE_LARGE ? 0.3 : 0.14) * retardant;
           const neighbors = [
             [row - 1, col],
             [row + 1, col],
@@ -217,6 +242,31 @@ export default class Main extends Phaser.Scene {
     });
   }
 
+  sprinklerTick() {
+    if (this.gameOver) return;
+
+    const fireTiles = [];
+    for (let row = 0; row < GRID_ROWS; row++) {
+      for (let col = 0; col < GRID_COLS; col++) {
+        if (
+          this.grid[row][col] === TILE_STATE.FIRE_SMALL ||
+          this.grid[row][col] === TILE_STATE.FIRE_LARGE
+        ) {
+          fireTiles.push([row, col]);
+        }
+      }
+    }
+    if (fireTiles.length === 0) return;
+
+    const [r, c] = Phaser.Utils.Array.GetRandom(fireTiles);
+    this.setTile(r, c, TILE_STATE.GRASS);
+    this.sprayParticles.explode(
+      6,
+      c * TILE_SIZE + TILE_SIZE / 2,
+      r * TILE_SIZE + TILE_SIZE / 2 + HUD_HEIGHT
+    );
+  }
+
   // ---------- Player ----------
 
   buildPlayer() {
@@ -283,7 +333,7 @@ export default class Main extends Phaser.Scene {
     // Water regen (slow, unless standing on a refill tile).
     const maxWater = BASE_MAX_WATER * waterCapacityMultiplier(this.state.upgrades.waterCapacity);
     const onRefill = this.currentPlayerTile()?.state === TILE_STATE.REFILL;
-    const regenRate = onRefill ? 40 : 5; // per second
+    const regenRate = onRefill ? 40 : waterRegenPerSecond(this.state.upgrades.waterRegen); // per second
     this.water = Math.min(maxWater, this.water + (regenRate * delta) / 1000);
 
     if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
@@ -401,11 +451,15 @@ export default class Main extends Phaser.Scene {
     if (this.gameOver) return;
     this.gameOver = true;
     this.spreadTimer.remove(false);
+    this.sprinklerTimer?.remove(false);
     this.player.setVelocity(0, 0);
 
     if (won) {
-      this.state.wave += 1;
-      this.time.delayedCall(400, () => this.scene.start('Shop'));
+      // A full paid shop appears every Nth wave; otherwise a free draft.
+      // Neither scene increments `state.wave` until "next wave" is
+      // clicked, so the "WAVE X CLEARED" title shows the wave just won.
+      const nextScene = this.state.wave % BIG_SHOP_INTERVAL === 0 ? 'BigShop' : 'Shop';
+      this.time.delayedCall(400, () => this.scene.start(nextScene));
     } else {
       recordBestWave(this.state.wave);
 
